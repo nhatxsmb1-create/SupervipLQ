@@ -83,6 +83,7 @@ class CoachViewModel(application: Application) : AndroidViewModel(application) {
     fun updateGoldDiff(newDiff: Int) {
         val current = tacticalState.value
         val eval = tacticalEngine.evaluate(
+            currentState = current,
             matchTimeSeconds = current.matchTimeSeconds,
             goldDiff = newDiff,
             allyKills = current.allyKills,
@@ -93,6 +94,14 @@ class CoachViewModel(application: Application) : AndroidViewModel(application) {
         )
         CoachStateHub.updateState(eval.newState)
         eval.voiceCallout?.let { voiceCoach.speakCallout(it, eval.calloutTag, eval.calloutPriority) }
+    }
+
+    fun startManualAnalysis() {
+        CoachStateHub.setManualAnalysisStart()
+    }
+
+    fun stopManualAnalysis() {
+        CoachStateHub.setManualAnalysisStop()
     }
 
     fun triggerVoiceCallout(phrase: String) {
@@ -119,7 +128,7 @@ class CoachViewModel(application: Application) : AndroidViewModel(application) {
                 finalKDA = "${state.allyKills}/${state.enemyKills}/5",
                 finalGoldDiff = state.teamGoldDiff,
                 recommendationsCount = 15,
-                topObjectiveContested = state.currentObjective.displayName,
+                topObjectiveContested = state.currentObjective?.displayName ?: "Caesar / Rồng",
                 coachScore = if (isWin) 92 else 74,
                 tacticalNotes = "Trợ Lý AI hỗ trợ cảnh báo giọng nói và gợi ý lên đồ khắc chế trực tiếp."
             )
@@ -129,7 +138,7 @@ class CoachViewModel(application: Application) : AndroidViewModel(application) {
                     matchId = matchId,
                     timestampSeconds = state.matchTimeSeconds / 2,
                     eventType = "MỤC TIÊU",
-                    calloutText = "Ưu tiên mục tiêu: ${state.currentObjective.displayName}",
+                    calloutText = "Ưu tiên mục tiêu: ${state.currentObjective?.displayName ?: "Mục tiêu lớn"}",
                     priorityLevel = 2
                 ),
                 TacticalLogEntity(

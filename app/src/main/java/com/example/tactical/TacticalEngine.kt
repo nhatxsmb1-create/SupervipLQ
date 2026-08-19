@@ -1,5 +1,6 @@
 package com.example.tactical
 
+import com.example.model.CoachStatus
 import com.example.model.DangerLevel
 import com.example.model.DetectedScreenMode
 import com.example.model.ItemRecommendation
@@ -19,14 +20,55 @@ data class TacticalEvaluationResult(
 class TacticalEngine {
 
     fun evaluate(
+        currentState: TacticalState,
         matchTimeSeconds: Int,
         goldDiff: Int,
         allyKills: Int,
         enemyKills: Int,
         allyTowers: Int,
         enemyTowers: Int,
-        detectedMode: DetectedScreenMode
+        detectedMode: DetectedScreenMode,
+        forceValid: Boolean = false
     ): TacticalEvaluationResult {
+
+        // Check match state
+        val isDataValid = forceValid || (matchTimeSeconds > 0 || detectedMode != DetectedScreenMode.IDLE)
+        val coachStatus = when {
+            !isDataValid -> CoachStatus.OUTSIDE_MATCH
+            matchTimeSeconds == 0 && detectedMode != DetectedScreenMode.IDLE -> CoachStatus.DETECTING_MATCH
+            matchTimeSeconds in 1..10 && allyKills == 0 && enemyKills == 0 -> CoachStatus.IN_MATCH_ANALYZING
+            else -> CoachStatus.IN_MATCH_READY
+        }
+
+        // Return empty/null recommendations if not in IN_MATCH_READY state and not forceValid
+        if (coachStatus != CoachStatus.IN_MATCH_READY && !forceValid) {
+            val emptyState = currentState.copy(
+                coachStatus = coachStatus,
+                gameDetected = (coachStatus != CoachStatus.OUTSIDE_MATCH),
+                matchStarted = (coachStatus == CoachStatus.IN_MATCH_ANALYZING || coachStatus == CoachStatus.IN_MATCH_READY),
+                gameDataValid = false,
+                analysisReady = false,
+                matchTimeSeconds = matchTimeSeconds,
+                winProbability = null,
+                currentObjective = null,
+                dangerWarning = "",
+                dangerLevel = DangerLevel.SAFE,
+                teamGoldDiff = goldDiff,
+                allyKills = allyKills,
+                enemyKills = enemyKills,
+                teamfightAdvice = "",
+                splitPushAdvice = "",
+                carryTarget = "",
+                detectedUIMode = detectedMode,
+                itemRecommendations = emptyList()
+            )
+            return TacticalEvaluationResult(
+                newState = emptyState,
+                voiceCallout = null,
+                calloutTag = "none",
+                calloutPriority = 1
+            )
+        }
 
         // 1. Calculate Estimated Win Probability
         val baseWin = 50
@@ -110,10 +152,15 @@ class TacticalEngine {
         val itemRecommendations = listOf(
             ItemRecommendation("Đao Truy Hồn", "Khắc chế hồi máu (Veres, Florentino, Taara)", "Lên Đồ Khắc Chế", 2000, isCounter = true),
             ItemRecommendation("Huân Chương Troy", "Kháng sốc sát thương phép từ Pháp Sư địch", "Lên Đồ Khắc Chế", 2220, isCounter = true),
-            ItemRecommendation("Thương Longinus", "Tăng xuyên giáp và giảm 15% hồi chiêu", "Trang Bị Cốt Lõi", 2060)
+            ItemRecommendation("Thương Longinus", "Xuyên giáp Đỡ Đòn và giảm hồi chiêu", "Trang Bị Cốt Lõi", 2060)
         )
 
-        val newState = TacticalState(
+        val newState = currentState.copy(
+            coachStatus = CoachStatus.IN_MATCH_READY,
+            gameDetected = true,
+            matchStarted = true,
+            gameDataValid = true,
+            analysisReady = true,
             matchTimeSeconds = matchTimeSeconds,
             winProbability = computedWin,
             currentObjective = objective,

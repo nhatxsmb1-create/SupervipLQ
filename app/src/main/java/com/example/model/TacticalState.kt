@@ -1,5 +1,13 @@
 package com.example.model
 
+enum class CoachStatus(val displayName: String, val detailText: String) {
+    OUTSIDE_MATCH("TRỢ LÝ SẴN SÀNG", "Chưa phát hiện trận đấu. Vào Liên Quân để bắt đầu phân tích"),
+    DETECTING_MATCH("ĐANG NHẬN DIỆN TRẬN", "Đang quét màn hình Liên Quân..."),
+    IN_MATCH_ANALYZING("ĐANG THU THẬP DỮ LIỆU", "Đang phân tích chỉ số trận đấu..."),
+    IN_MATCH_READY("ĐANG PHÂN TÍCH TRỰC TIẾP", "Đang phân tích chiến thuật thực chiến"),
+    MATCH_ENDED("TRẬN ĐẤU KẾT THÚC", "Trận đấu đã hoàn thành")
+}
+
 enum class ObjectiveTarget(val displayName: String, val minGameTimeSec: Int, val maxGameTimeSec: Int) {
     SPIRIT_SENTINEL("Dơi Thủ Vệ (Bảo Kê Đường)", 70, 480),
     ABYSSAL_DRAGON("Rồng Krayg / Rồng Ánh Sáng", 120, 900),
@@ -45,39 +53,45 @@ data class ItemRecommendation(
 )
 
 data class TacticalState(
+    val coachStatus: CoachStatus = CoachStatus.OUTSIDE_MATCH,
+    val gameDetected: Boolean = false,
+    val matchStarted: Boolean = false,
+    val gameDataValid: Boolean = false,
+    val analysisReady: Boolean = false,
     val matchTimeSeconds: Int = 0,
-    val winProbability: Int = 50, // 0 to 100%
-    val currentObjective: ObjectiveTarget = ObjectiveTarget.FARM_SAFE,
-    val dangerWarning: String = "Không có nguy hiểm cận kề",
+    val winProbability: Int? = null,
+    val currentObjective: ObjectiveTarget? = null,
+    val dangerWarning: String = "",
     val dangerLevel: DangerLevel = DangerLevel.SAFE,
     val teamGoldDiff: Int = 0, // + is ally lead, - is deficit
     val allyKills: Int = 0,
     val enemyKills: Int = 0,
     val allyTowers: Int = 0,
     val enemyTowers: Int = 0,
-    val teamfightAdvice: String = "Farm an toàn và giữ vị trí sau Đỡ Đòn",
-    val splitPushAdvice: String = "Giữ thế lính cân bằng ở các đường",
-    val carryTarget: String = "Xạ Thủ Chủ Lực",
+    val teamfightAdvice: String = "",
+    val splitPushAdvice: String = "",
+    val carryTarget: String = "",
     val detectedUIMode: DetectedScreenMode = DetectedScreenMode.IDLE,
     val isVoiceMuted: Boolean = false,
     val topThreats: List<ThreatPlayer> = emptyList(),
-    val itemRecommendations: List<ItemRecommendation> = listOf(
-        ItemRecommendation("Đao Truy Hồn", "Khắc chế tướng hồi máu (Veres, Florentino, Taara)", "Lên Đồ Khắc Chế", 2000, isCounter = true),
-        ItemRecommendation("Huân Chương Troy", "Kháng sốc sát thương phép từ Pháp Sư địch", "Lên Đồ Khắc Chế", 2220, isCounter = true),
-        ItemRecommendation("Thương Longinus", "Xuyên giáp Đỡ Đòn và giảm hồi chiêu", "Trang Bị Cốt Lõi", 2060)
-    ),
+    val itemRecommendations: List<ItemRecommendation> = emptyList(),
     val lastOcrText: String = "",
-    val captureFpsMode: String = "Nghỉ (1 khung hình / 5 giây)"
+    val captureFpsMode: String = "Nghỉ (Chờ trận)"
 ) {
     val formattedTime: String
         get() {
+            if (!gameDataValid || matchTimeSeconds <= 0) return "--:--"
             val min = matchTimeSeconds / 60
             val sec = matchTimeSeconds % 60
             return "%02d:%02d".format(min, sec)
         }
 
+    val formattedWinRate: String
+        get() = if (analysisReady && winProbability != null) "${winProbability}%" else "--%"
+
     val formattedGoldDiff: String
         get() {
+            if (!gameDataValid) return "-- Vàng"
             val prefix = if (teamGoldDiff >= 0) "+ " else "- "
             val absVal = kotlin.math.abs(teamGoldDiff)
             return if (absVal >= 1000) {

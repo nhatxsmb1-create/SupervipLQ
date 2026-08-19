@@ -1,5 +1,6 @@
 package com.example.service
 
+import com.example.model.CoachStatus
 import com.example.model.DangerLevel
 import com.example.model.DetectedScreenMode
 import com.example.model.ItemRecommendation
@@ -47,6 +48,52 @@ object CoachStateHub {
         _tacticalState.value = current.copy(isVoiceMuted = muted)
     }
 
+    fun setManualAnalysisStart() {
+        val current = _tacticalState.value
+        _tacticalState.value = current.copy(
+            coachStatus = CoachStatus.IN_MATCH_READY,
+            gameDetected = true,
+            matchStarted = true,
+            gameDataValid = true,
+            analysisReady = true,
+            matchTimeSeconds = 120,
+            winProbability = 50,
+            currentObjective = ObjectiveTarget.SPIRIT_SENTINEL,
+            dangerWarning = "Đang phân tích trực tiếp màn hình trận đấu",
+            dangerLevel = DangerLevel.SAFE,
+            teamfightAdvice = "Bắt đầu giao tranh theo hướng dẫn trợ lý",
+            splitPushAdvice = "Đẩy lính các đường",
+            carryTarget = "Xạ Thủ / Pháp Sư Địch",
+            itemRecommendations = listOf(
+                ItemRecommendation("Đao Truy Hồn", "Khắc chế hồi máu", "Lên Đồ Khắc Chế", 2000, isCounter = true),
+                ItemRecommendation("Huân Chương Troy", "Kháng sát thương phép", "Lên Đồ Khắc Chế", 2220, isCounter = true)
+            )
+        )
+    }
+
+    fun setManualAnalysisStop() {
+        val current = _tacticalState.value
+        _tacticalState.value = current.copy(
+            coachStatus = CoachStatus.OUTSIDE_MATCH,
+            gameDetected = false,
+            matchStarted = false,
+            gameDataValid = false,
+            analysisReady = false,
+            matchTimeSeconds = 0,
+            winProbability = null,
+            currentObjective = null,
+            dangerWarning = "",
+            dangerLevel = DangerLevel.SAFE,
+            teamGoldDiff = 0,
+            allyKills = 0,
+            enemyKills = 0,
+            teamfightAdvice = "",
+            splitPushAdvice = "",
+            carryTarget = "",
+            itemRecommendations = emptyList()
+        )
+    }
+
     /**
      * Các tình huống mô phỏng thực chiến mẫu
      */
@@ -54,6 +101,11 @@ object CoachStateHub {
         when (scenarioIndex) {
             0 -> { // Đầu trận & Cảnh báo bị gank
                 _tacticalState.value = TacticalState(
+                    coachStatus = CoachStatus.IN_MATCH_READY,
+                    gameDetected = true,
+                    matchStarted = true,
+                    gameDataValid = true,
+                    analysisReady = true,
                     matchTimeSeconds = 115,
                     winProbability = 52,
                     currentObjective = ObjectiveTarget.SPIRIT_SENTINEL,
@@ -68,12 +120,17 @@ object CoachStateHub {
                     splitPushAdvice = "Dọn nhanh đợt lính rồi đảo đường hỗ trợ Mid",
                     carryTarget = "Nakroth (Cấp 4 - Đang rình gank)",
                     detectedUIMode = DetectedScreenMode.IDLE,
-                    captureFpsMode = "Nghỉ (1 khung hình / 5s)",
+                    captureFpsMode = "Mô phỏng (1 frame / 5s)",
                     lastOcrText = "Thời gian: 01:55 | Vàng: 3.2k vs 2.9k"
                 )
             }
             1 -> { // Giữa trận tranh chấp Rồng (Kém tiền)
                 _tacticalState.value = TacticalState(
+                    coachStatus = CoachStatus.IN_MATCH_READY,
+                    gameDetected = true,
+                    matchStarted = true,
+                    gameDataValid = true,
+                    analysisReady = true,
                     matchTimeSeconds = 380,
                     winProbability = 41,
                     currentObjective = ObjectiveTarget.ABYSSAL_DRAGON,
@@ -88,12 +145,17 @@ object CoachStateHub {
                     splitPushAdvice = "Đường trên đẩy lẻ tạo áp lực buộc địch về thủ",
                     carryTarget = "Violet (Xạ Thủ 6/0/2 - Sát thương cực lớn)",
                     detectedUIMode = DetectedScreenMode.COMBAT,
-                    captureFpsMode = "Giao Tranh (1 khung hình / 1s)",
+                    captureFpsMode = "Giao Tranh (1 frame / 1s)",
                     lastOcrText = "Thời gian: 06:20 | Vàng: 14.8k vs 19.0k"
                 )
             }
             2 -> { // Mở Cửa Hàng Phân Tích Đồ Khắc Chế
                 _tacticalState.value = TacticalState(
+                    coachStatus = CoachStatus.IN_MATCH_READY,
+                    gameDetected = true,
+                    matchStarted = true,
+                    gameDataValid = true,
+                    analysisReady = true,
                     matchTimeSeconds = 450,
                     winProbability = 58,
                     currentObjective = ObjectiveTarget.MID_TOWER,
@@ -119,6 +181,11 @@ object CoachStateHub {
             }
             3 -> { // Bảng Điểm Hơn Người 5v4
                 _tacticalState.value = TacticalState(
+                    coachStatus = CoachStatus.IN_MATCH_READY,
+                    gameDetected = true,
+                    matchStarted = true,
+                    gameDataValid = true,
+                    analysisReady = true,
                     matchTimeSeconds = 620,
                     winProbability = 68,
                     currentObjective = ObjectiveTarget.DARK_SLAYER,
@@ -143,6 +210,11 @@ object CoachStateHub {
             }
             4 -> { // Cuối Trận Thủ Trụ Siêu Cấp
                 _tacticalState.value = TacticalState(
+                    coachStatus = CoachStatus.IN_MATCH_READY,
+                    gameDetected = true,
+                    matchStarted = true,
+                    gameDataValid = true,
+                    analysisReady = true,
                     matchTimeSeconds = 1040,
                     winProbability = 36,
                     currentObjective = ObjectiveTarget.HIGH_GROUND_DEFENSE,
@@ -157,7 +229,7 @@ object CoachStateHub {
                     splitPushAdvice = "Không đi lẻ - Bắt buộc tụ hợp 5 người thủ nhà",
                     carryTarget = "Violet & Elsu (Đứng sau cấu rỉa)",
                     detectedUIMode = DetectedScreenMode.COMBAT,
-                    captureFpsMode = "Giao Tranh (1 khung hình / 1s)",
+                    captureFpsMode = "Giao Tranh (1 frame / 1s)",
                     itemRecommendations = listOf(
                         ItemRecommendation("Giáp Hộ Mệnh", "Bắt buộc hồi sinh để thủ nhà chính", "Tình Huống", 2080, isCounter = true),
                         ItemRecommendation("Nham Thuẫn", "Tạo lá chắn lớn sống sót khi bị ép Trụ", "Tình Huống", 1980)

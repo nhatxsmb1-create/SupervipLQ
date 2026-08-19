@@ -265,13 +265,15 @@ class LiveCoachService : Service() {
 
                 // Tactical Rule-based Evaluation
                 val eval = tacticalEngine.evaluate(
-                    matchTimeSeconds = currentState.matchTimeSeconds + (delayMs / 1000).toInt().coerceAtLeast(1),
+                    currentState = currentState,
+                    matchTimeSeconds = if (currentState.gameDataValid) currentState.matchTimeSeconds + (delayMs / 1000).toInt().coerceAtLeast(1) else 0,
                     goldDiff = currentState.teamGoldDiff,
                     allyKills = currentState.allyKills,
                     enemyKills = currentState.enemyKills,
                     allyTowers = currentState.allyTowers,
                     enemyTowers = currentState.enemyTowers,
-                    detectedMode = currentState.detectedUIMode
+                    detectedMode = currentState.detectedUIMode,
+                    forceValid = isSimulating || currentState.gameDataValid
                 )
 
                 // Update shared state

@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.model.CoachStatus
 import com.example.model.DangerLevel
 import com.example.ui.theme.AlertOrange
 import com.example.ui.theme.ArcaneCyan
@@ -75,9 +76,10 @@ fun CoachOverlayScreen(
         DangerLevel.CRITICAL -> DefeatRed
     }
 
+    val winProb = tacticalState.winProbability ?: 50
     val winColor = when {
-        tacticalState.winProbability >= 55 -> VictoryGreen
-        tacticalState.winProbability <= 45 -> DefeatRed
+        winProb >= 55 -> VictoryGreen
+        winProb <= 45 -> DefeatRed
         else -> ImperialGold
     }
 
@@ -203,14 +205,14 @@ fun CoachOverlayScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "THẮNG: ${tacticalState.winProbability}%",
+                        text = tacticalState.coachStatus.displayName,
                         color = winColor,
                         fontWeight = FontWeight.Black,
                         fontSize = 11.sp,
                         fontFamily = FontFamily.Monospace
                     )
                     Text(
-                        text = tacticalState.currentObjective.displayName,
+                        text = if (tacticalState.coachStatus == CoachStatus.IN_MATCH_READY) (tacticalState.currentObjective?.displayName ?: "--") else tacticalState.formattedTime,
                         color = ImperialGold,
                         fontWeight = FontWeight.Bold,
                         fontSize = 11.sp,
@@ -230,160 +232,215 @@ fun CoachOverlayScreen(
                         .fillMaxWidth()
                         .padding(top = 6.dp)
                 ) {
-                    // Thanh Tỉ Lệ Thắng + Chênh Lệch Vàng
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "TỈ LỆ THẮNG: ${tacticalState.winProbability}%",
-                            color = winColor,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Text(
-                            text = tacticalState.formattedGoldDiff,
-                            color = if (tacticalState.teamGoldDiff >= 0) VictoryGreen else DefeatRed,
-                            fontWeight = FontWeight.Black,
-                            fontSize = 11.sp,
-                            fontFamily = FontFamily.Monospace
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(3.dp))
-                    LinearProgressIndicator(
-                        progress = { tacticalState.winProbability / 100f },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(5.dp)
-                            .clip(RoundedCornerShape(3.dp)),
-                        color = winColor,
-                        trackColor = Color(0x40000000)
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Thẻ Mục Tiêu Ưu Tiên
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF0D1B33))
-                            .border(1.dp, ImperialGold.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
-                            .padding(6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Security,
-                                contentDescription = "Mục Tiêu",
-                                tint = ImperialGold,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Column {
+                    if (tacticalState.coachStatus != CoachStatus.IN_MATCH_READY) {
+                        // Hiển thị Card Trạng Thái Chờ Trận Đấu
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(Color(0xFF0F1E38))
+                                .border(1.dp, ArcaneCyan.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                .padding(10.dp)
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                                 Text(
-                                    text = "MỤC TIÊU ƯU TIÊN:",
-                                    fontSize = 8.sp,
+                                    text = tacticalState.coachStatus.displayName,
+                                    fontSize = 12.sp,
                                     fontWeight = FontWeight.Black,
                                     color = ImperialGoldLight,
                                     letterSpacing = 0.5.sp
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = tacticalState.currentObjective.displayName,
+                                    text = tacticalState.coachStatus.detailText,
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = Color.White
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Cảnh Báo Nguy Hiểm & Bị Gank
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .background(dangerColor.copy(alpha = 0.15f))
-                            .border(1.dp, dangerColor.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
-                            .padding(6.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.Top) {
-                            Icon(
-                                imageVector = Icons.Default.Warning,
-                                contentDescription = "Cảnh Báo",
-                                tint = dangerColor,
-                                modifier = Modifier
-                                    .size(15.dp)
-                                    .padding(top = 1.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Column {
-                                Text(
-                                    text = "CẢNH BÁO: (${tacticalState.dangerLevel.labelVi.uppercase()})",
-                                    fontSize = 8.sp,
-                                    fontWeight = FontWeight.Black,
-                                    color = dangerColor,
-                                    letterSpacing = 0.5.sp
-                                )
-                                Text(
-                                    text = tacticalState.dangerWarning,
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
                                     color = Color.White,
-                                    lineHeight = 14.sp
+                                    fontWeight = FontWeight.Medium,
+                                    lineHeight = 15.sp
                                 )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(ArcaneCyan)
+                                        .clickable { CoachStateHub.setManualAnalysisStart() }
+                                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.FlashOn,
+                                        contentDescription = "Bắt đầu",
+                                        tint = Color.Black,
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "BẮT ĐẦU PHÂN TÍCH",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color.Black
+                                    )
+                                }
                             }
                         }
-                    }
-
-                    // Lời Khuyên Giao Tranh
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "LỜI KHUYÊN CHIẾN THUẬT:",
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Black,
-                        color = ArcaneCyan,
-                        letterSpacing = 0.5.sp
-                    )
-                    Text(
-                        text = tacticalState.teamfightAdvice,
-                        fontSize = 11.sp,
-                        color = Color(0xFFE2E8F0),
-                        fontWeight = FontWeight.Medium,
-                        lineHeight = 14.sp
-                    )
-
-                    // Gợi Ý Trang Bị Khắc Chế
-                    val topCounter = tacticalState.itemRecommendations.firstOrNull { it.isCounter }
-                    if (topCounter != null) {
-                        Spacer(modifier = Modifier.height(6.dp))
+                    } else {
+                        // Thanh Tỉ Lệ Thắng + Chênh Lệch Vàng
                         Row(
-                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "TỈ LỆ THẮNG: ${tacticalState.formattedWinRate}",
+                                color = winColor,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text = tacticalState.formattedGoldDiff,
+                                color = if (tacticalState.teamGoldDiff >= 0) VictoryGreen else DefeatRed,
+                                fontWeight = FontWeight.Black,
+                                fontSize = 11.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(3.dp))
+                        LinearProgressIndicator(
+                            progress = { (tacticalState.winProbability ?: 50) / 100f },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(6.dp))
-                                .background(Color(0xFF261836))
-                                .border(1.dp, ImperialGold.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                                .padding(4.dp)
+                                .height(5.dp)
+                                .clip(RoundedCornerShape(3.dp)),
+                            color = winColor,
+                            trackColor = Color(0x40000000)
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Thẻ Mục Tiêu Ưu Tiên
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(Color(0xFF0D1B33))
+                                .border(1.dp, ImperialGold.copy(alpha = 0.4f), RoundedCornerShape(8.dp))
+                                .padding(6.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.ShoppingBag,
-                                contentDescription = "Trang Bị",
-                                tint = ImperialGold,
-                                modifier = Modifier.size(13.dp)
-                            )
-                            Spacer(modifier = Modifier.width(4.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.Security,
+                                    contentDescription = "Mục Tiêu",
+                                    tint = ImperialGold,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text(
+                                        text = "MỤC TIÊU ƯU TIÊN:",
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = ImperialGoldLight,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                    Text(
+                                        text = tacticalState.currentObjective?.displayName ?: "--",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        // Cảnh Báo Nguy Hiểm & Bị Gank
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(dangerColor.copy(alpha = 0.15f))
+                                .border(1.dp, dangerColor.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
+                                .padding(6.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.Top) {
+                                Icon(
+                                    imageVector = Icons.Default.Warning,
+                                    contentDescription = "Cảnh Báo",
+                                    tint = dangerColor,
+                                    modifier = Modifier
+                                        .size(15.dp)
+                                        .padding(top = 1.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Column {
+                                    Text(
+                                        text = "CẢNH BÁO: (${tacticalState.dangerLevel.labelVi.uppercase()})",
+                                        fontSize = 8.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = dangerColor,
+                                        letterSpacing = 0.5.sp
+                                    )
+                                    Text(
+                                        text = tacticalState.dangerWarning.ifBlank { "Không có nguy hiểm cận kề" },
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        lineHeight = 14.sp
+                                    )
+                                }
+                            }
+                        }
+
+                        // Lời Khuyên Giao Tranh
+                        if (tacticalState.teamfightAdvice.isNotBlank()) {
+                            Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = "Lên: ${topCounter.itemName} (${topCounter.reason})",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = ImperialGoldLight,
-                                maxLines = 1
+                                text = "LỜI KHUYÊN CHIẾN THUẬT:",
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Black,
+                                color = ArcaneCyan,
+                                letterSpacing = 0.5.sp
                             )
+                            Text(
+                                text = tacticalState.teamfightAdvice,
+                                fontSize = 11.sp,
+                                color = Color(0xFFE2E8F0),
+                                fontWeight = FontWeight.Medium,
+                                lineHeight = 14.sp
+                            )
+                        }
+
+                        // Gợi Ý Trang Bị Khắc Chế
+                        val topCounter = tacticalState.itemRecommendations.firstOrNull { it.isCounter }
+                        if (topCounter != null) {
+                            Spacer(modifier = Modifier.height(6.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFF261836))
+                                    .border(1.dp, ImperialGold.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                                    .padding(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ShoppingBag,
+                                    contentDescription = "Trang Bị",
+                                    tint = ImperialGold,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Lên: ${topCounter.itemName} (${topCounter.reason})",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ImperialGoldLight,
+                                    maxLines = 1
+                                )
+                            }
                         }
                     }
                 }
