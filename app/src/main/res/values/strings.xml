@@ -1,0 +1,10 @@
+<resources>
+    <string name="app_name">Trợ Lý Liên Quân AI</string>
+    <string name="nav_live_coach">Trợ Lý Live</string>
+    <string name="nav_history">Lịch Sử Đấu</string>
+    <string name="nav_strategy">Khắc Chế</string>
+    <string name="nav_settings">Cài Đặt</string>
+    <string name="service_notification_title">Trợ Lý Liên Quân AI — Đang Hoạt Động</string>
+    <string name="service_notification_text">Đang phân tích bản đồ và đưa ra cảnh báo chiến thuật theo thời gian thực</string>
+    <string name="service_stop_action">Dừng Trợ Lý</string>
+</resources>

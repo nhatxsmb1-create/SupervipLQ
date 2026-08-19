@@ -1,0 +1,6 @@
+{
+  "name": "Trợ Lý Liên Quân AI",
+  "description": "Trợ lý chiến thuật thời gian thực cho Liên Quân Mobile: phân tích màn hình thông minh, cửa sổ nổi HUD, khắc chế tướng và trang bị, giọng nói chỉ huy trực tiếp.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
