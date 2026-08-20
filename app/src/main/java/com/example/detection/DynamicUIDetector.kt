@@ -110,7 +110,7 @@ class DynamicUIDetector {
         }
 
         val matchRatio = darkCenterPixels / samplePoints.toFloat()
-        if (matchRatio >= 0.60f) {
+        if (matchRatio >= 0.85f) {
             return DetectedUIComponent(
                 componentName = "Scoreboard",
                 boundingBox = RectF(0.10f, 0.15f, 0.90f, 0.85f),

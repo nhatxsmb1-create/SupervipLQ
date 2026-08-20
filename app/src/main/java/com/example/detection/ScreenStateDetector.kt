@@ -30,11 +30,21 @@ class ScreenStateDetector {
 
         // Check OCR text hints for game screen or match timer pattern
         val hasTimerPattern = ocrText.contains(Regex("(\\d{1,2})[:.](\\d{2})"))
+        val hasInGameKeywords = ocrText.contains("vs", ignoreCase = true) ||
+                ocrText.contains("k", ignoreCase = true) ||
+                ocrText.contains("Vàng", ignoreCase = true) ||
+                ocrText.contains("Caesar", ignoreCase = true) ||
+                ocrText.contains("Rồng", ignoreCase = true) ||
+                ocrText.contains("Trụ", ignoreCase = true) ||
+                ocrText.contains("Chiến", ignoreCase = true)
+
         val hasLobbyText = ocrText.contains("Đấu Luyện", ignoreCase = true) ||
                 ocrText.contains("Đấu Hạng", ignoreCase = true) ||
-                ocrText.contains("Bắt Đầu", ignoreCase = true)
+                ocrText.contains("Bắt Đầu", ignoreCase = true) ||
+                ocrText.contains("Sảnh", ignoreCase = true) ||
+                ocrText.contains("Lobby", ignoreCase = true)
 
-        if (hasLobbyText && !hasTimerPattern) {
+        if (hasLobbyText && !hasTimerPattern && !hasInGameKeywords) {
             return ScreenState.GAME_MENU
         }
 
@@ -44,30 +54,32 @@ class ScreenStateDetector {
         // Check color distribution for dark loading screen or active match
         var darkPixels = 0
         var brightSkillPixels = 0
-        val samples = 20
+        var nonBlackPixels = 0
+        val samples = 25
 
         for (i in 0 until samples) {
-            val cx = (w * (0.2f + (i % 5) * 0.15f)).toInt().coerceIn(0, w - 1)
-            val cy = (h * (0.2f + (i / 5) * 0.12f)).toInt().coerceIn(0, h - 1)
+            val cx = (w * (0.15f + (i % 5) * 0.17f)).toInt().coerceIn(0, w - 1)
+            val cy = (h * (0.15f + (i / 5) * 0.15f)).toInt().coerceIn(0, h - 1)
             val pixel = bitmap.getPixel(cx, cy)
             val luma = (Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)) / 3
 
-            if (luma < 30) darkPixels++
-            if (luma > 210) brightSkillPixels++
+            if (luma < 25) darkPixels++
+            if (luma > 200) brightSkillPixels++
+            if (luma > 10) nonBlackPixels++
         }
 
-        if (brightSkillPixels > 8) {
+        if (brightSkillPixels > 6) {
             return ScreenState.COMBAT
         }
 
-        if (hasTimerPattern || darkPixels < 15) {
+        if (hasTimerPattern || hasInGameKeywords || darkPixels < 22) {
             return ScreenState.IN_MATCH
         }
 
-        if (darkPixels >= 18) {
+        if (darkPixels >= 23 && nonBlackPixels < 5) {
             return ScreenState.LOADING
         }
 
-        return ScreenState.OUTSIDE_GAME
+        return if (nonBlackPixels > 10) ScreenState.IN_MATCH else ScreenState.OUTSIDE_GAME
     }
 }

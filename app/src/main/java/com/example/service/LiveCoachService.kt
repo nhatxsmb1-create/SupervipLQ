@@ -158,7 +158,16 @@ class LiveCoachService : Service() {
                 Log.d("LiveCoachService", "MediaProjection acquired successfully")
 
                 if (mp != null) {
-                    val acm = AutoCaptureManager()
+                    val metrics = resources.displayMetrics
+                    val realW = metrics.widthPixels.coerceAtLeast(1280)
+                    val realH = metrics.heightPixels.coerceAtLeast(720)
+                    val realDpi = metrics.densityDpi.coerceAtLeast(240)
+
+                    val acm = AutoCaptureManager(
+                        displayWidth = realW,
+                        displayHeight = realH,
+                        displayDpi = realDpi
+                    )
                     autoCaptureManager = acm
                     acm.startCapture(mp)
                     observeAutoCapturedFrames(acm)

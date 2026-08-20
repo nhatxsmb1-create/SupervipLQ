@@ -90,11 +90,26 @@ class VisionAnalysisEngine : IVisionEngine {
                 if (topBarComponent != null) {
                     topBarCrop = dynamicROIExtractor.cropComponent(bitmap, topBarComponent)
                 }
-                if (topBarCrop != null) {
+                if (topBarCrop == null && !bitmap.isRecycled && bitmap.width > 50 && bitmap.height > 50) {
+                    // Fallback: Crop top 25% of screen for timer/header OCR
+                    val topH = (bitmap.height * 0.25f).toInt().coerceIn(10, bitmap.height)
+                    topBarCrop = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, topH)
+                }
+                if (topBarCrop != null && !topBarCrop.isRecycled) {
                     ocrText = recognizeText(topBarCrop)
                 }
+            } catch (e: Exception) {
+                Log.w("VisionEngine", "TopBar crop OCR error: ${e.message}")
             } finally {
                 topBarCrop?.recycle()
+            }
+
+            // Fallback: If header OCR is blank or missed numbers, perform OCR on full frame
+            if (ocrText.isBlank() || !ocrText.contains(Regex("\\d"))) {
+                val fullText = recognizeText(bitmap)
+                if (fullText.isNotBlank()) {
+                    ocrText = if (ocrText.isBlank()) fullText else "$ocrText\n$fullText"
+                }
             }
 
             // 4. Screen State Classification
