@@ -76,7 +76,10 @@ class AutoCaptureManager(
                     val bitmap = imageToBitmap(image)
                     if (bitmap != null) {
                         lastCaptureTimeMs = now
-                        _capturedFrames.tryEmit(bitmap)
+                        val emitted = _capturedFrames.tryEmit(bitmap)
+                        if (!emitted) {
+                            bitmap.recycle()
+                        }
                     }
                 }
             } catch (e: Exception) {

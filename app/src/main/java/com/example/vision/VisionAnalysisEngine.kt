@@ -71,7 +71,7 @@ class VisionAnalysisEngine : IVisionEngine {
         // 1. Frame Change Detection
         val changeResult = frameChangeDetector.checkFrameChange(bitmap)
         val timeSinceLastFull = startTime - lastFullAnalysisTimeMs
-        val shouldForceAnalysis = timeSinceLastFull > 3000L || cachedGameState.screenState == ScreenState.OUTSIDE_GAME
+        val shouldForceAnalysis = timeSinceLastFull > 1000L || cachedGameState.screenState == ScreenState.OUTSIDE_GAME
 
         if (!changeResult.hasChanged && !shouldForceAnalysis) {
             // Screen has not changed significantly, return cached state with updated stats

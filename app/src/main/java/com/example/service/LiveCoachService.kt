@@ -8,12 +8,15 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.graphics.PixelFormat
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
@@ -126,7 +129,15 @@ class LiveCoachService : Service() {
             return START_NOT_STICKY
         }
 
-        startForeground(NOTIFICATION_ID, buildForegroundNotification())
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            startForeground(
+                NOTIFICATION_ID,
+                buildForegroundNotification(),
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            )
+        } else {
+            startForeground(NOTIFICATION_ID, buildForegroundNotification())
+        }
         CoachStateHub.setServiceRunning(true)
 
         isSimulating = intent?.getBooleanExtra(ACTION_SIMULATE, false) ?: false
@@ -165,6 +176,15 @@ class LiveCoachService : Service() {
                 Log.d("LiveCoachService", "MediaProjection acquired successfully")
 
                 if (mp != null) {
+                    val projectionCallback = object : MediaProjection.Callback() {
+                        override fun onStop() {
+                            Log.d("LiveCoachService", "MediaProjection stopped by system")
+                            autoCaptureManager?.stopCapture()
+                            autoCaptureManager = null
+                        }
+                    }
+                    mp.registerCallback(projectionCallback, Handler(Looper.getMainLooper()))
+
                     val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
                     val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                         display
@@ -188,7 +208,7 @@ class LiveCoachService : Service() {
                     } else metrics.heightPixels
 
                     val captureW = maxOf(realW, realH).coerceAtLeast(1280)
-                    val captureH = minOf(realW, realH).coerceAtLeast(720)
+                    val captureH = minOf(realH, realW).coerceAtMost(minOf(realW, realH)).coerceAtLeast(720)
                     val realDpi = metrics.densityDpi.coerceAtLeast(240)
 
                     val acm = AutoCaptureManager(
@@ -206,28 +226,43 @@ class LiveCoachService : Service() {
         }
     }
 
+    @Volatile
+    private var isAnalyzingFrame = false
+
     private fun observeAutoCapturedFrames(acm: AutoCaptureManager) {
         serviceScope.launch(Dispatchers.Default) {
-            acm.capturedFrames.collectLatest { bitmap ->
-                val gameState = visionEngine.analyzeFrameToGameState(
-                    bitmap = bitmap,
-                    captureIntervalMs = acm.getCurrentIntervalMs()
-                )
-
-                CoachStateHub.updateGameState(gameState)
-                acm.setAdaptiveState(gameState.screenState)
-
-                val currentState = CoachStateHub.tacticalState.value
-                val eval = tacticalEngine.evaluateGameState(gameState, currentState)
-
-                CoachStateHub.updateState(eval.newState)
-
-                eval.voiceCallout?.let { phrase ->
-                    voiceCoach?.speakCallout(
-                        callout = phrase,
-                        tag = eval.calloutTag,
-                        priority = eval.calloutPriority
+            acm.capturedFrames.collect { bitmap ->
+                if (isAnalyzingFrame) {
+                    bitmap.recycle()
+                    return@collect
+                }
+                isAnalyzingFrame = true
+                try {
+                    val gameState = visionEngine.analyzeFrameToGameState(
+                        bitmap = bitmap,
+                        captureIntervalMs = acm.getCurrentIntervalMs()
                     )
+
+                    CoachStateHub.updateGameState(gameState)
+                    acm.setAdaptiveState(gameState.screenState)
+
+                    val currentState = CoachStateHub.tacticalState.value
+                    val eval = tacticalEngine.evaluateGameState(gameState, currentState)
+
+                    CoachStateHub.updateState(eval.newState)
+
+                    eval.voiceCallout?.let { phrase ->
+                        voiceCoach?.speakCallout(
+                            callout = phrase,
+                            tag = eval.calloutTag,
+                            priority = eval.calloutPriority
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e("LiveCoachService", "Error analyzing captured frame", e)
+                } finally {
+                    bitmap.recycle()
+                    isAnalyzingFrame = false
                 }
             }
         }
