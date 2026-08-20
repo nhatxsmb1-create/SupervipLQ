@@ -88,6 +88,13 @@ object CoachStateHub {
         )
     }
 
+    private var currentScenarioIndex = 0
+
+    fun advanceSimulationScenario() {
+        applyPresetScenario(currentScenarioIndex)
+        currentScenarioIndex = (currentScenarioIndex + 1) % 5
+    }
+
     /**
      * Các tình huống mô phỏng thực chiến mẫu
      */

@@ -84,7 +84,7 @@ class LiveCoachService : Service() {
 
     private var windowManager: WindowManager? = null
     private var overlayFloatingView: View? = null
-    private var layoutParams: WindowManager.LayoutParams? = null
+    private var windowLayoutParams: WindowManager.LayoutParams? = null
     private var serviceLifecycleOwner: ServiceLifecycleOwner? = null
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
@@ -239,12 +239,13 @@ class LiveCoachService : Service() {
             x = 40
             y = 180
         }
-        layoutParams = params
+        windowLayoutParams = params
 
         val owner = ServiceLifecycleOwner()
         serviceLifecycleOwner = owner
 
-        val composeView = ComposeView(this).apply {
+        lateinit var composeView: ComposeView
+        composeView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(owner)
             setViewTreeSavedStateRegistryOwner(owner)
             setViewTreeViewModelStoreOwner(owner)
@@ -258,43 +259,16 @@ class LiveCoachService : Service() {
                             CoachStateHub.toggleVoiceMute()
                             val muted = CoachStateHub.tacticalState.value.isVoiceMuted
                             voiceCoach?.setMuted(muted)
+                        },
+                        onDrag = { dx, dy ->
+                            windowLayoutParams?.let { lp ->
+                                lp.x += dx
+                                lp.y += dy
+                                windowManager?.updateViewLayout(composeView, lp)
+                            }
                         }
                     )
                 }
-            }
-        }
-
-        // Make floating overlay touch draggable
-        var initialX = 0
-        var initialY = 0
-        var initialTouchX = 0f
-        var initialTouchY = 0f
-
-        composeView.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> {
-                    initialX = params.x
-                    initialY = params.y
-                    initialTouchX = event.rawX
-                    initialTouchY = event.rawY
-                    true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val dx = (event.rawX - initialTouchX).toInt()
-                    val dy = (event.rawY - initialTouchY).toInt()
-                    params.x = initialX + dx
-                    params.y = initialY + dy
-                    windowManager?.updateViewLayout(composeView, params)
-                    true
-                }
-                MotionEvent.ACTION_UP -> {
-                    val totalMove = abs(event.rawX - initialTouchX) + abs(event.rawY - initialTouchY)
-                    if (totalMove < 10) {
-                        composeView.performClick()
-                    }
-                    true
-                }
-                else -> false
             }
         }
 

@@ -74,36 +74,31 @@ class ScreenStateDetector {
 
         val w = bitmap.width
         val h = bitmap.height
+        val isLandscape = w >= h
 
-        // Check color distribution for dark loading screen or active match
-        var darkPixels = 0
-        var brightSkillPixels = 0
-        var nonBlackPixels = 0
-        val samples = 25
+        // If screen is in landscape (Arena of Valor game orientation) and no lobby text was matched:
+        if (isLandscape) {
+            var brightSkillPixels = 0
+            val samples = 30
+            for (i in 0 until samples) {
+                val cx = (w * (0.15f + (i % 6) * 0.14f)).toInt().coerceIn(0, w - 1)
+                val cy = (h * (0.15f + (i / 6) * 0.15f)).toInt().coerceIn(0, h - 1)
+                val pixel = bitmap.getPixel(cx, cy)
+                val luma = (Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)) / 3
+                if (luma > 210) brightSkillPixels++
+            }
 
-        for (i in 0 until samples) {
-            val cx = (w * (0.15f + (i % 5) * 0.17f)).toInt().coerceIn(0, w - 1)
-            val cy = (h * (0.15f + (i / 5) * 0.15f)).toInt().coerceIn(0, h - 1)
-            val pixel = bitmap.getPixel(cx, cy)
-            val luma = (Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)) / 3
-
-            if (luma < 25) darkPixels++
-            if (luma > 200) brightSkillPixels++
-            if (luma > 10) nonBlackPixels++
+            return if (brightSkillPixels >= 8) {
+                ScreenState.COMBAT
+            } else {
+                ScreenState.IN_MATCH
+            }
         }
 
-        if (brightSkillPixels > 6) {
-            return ScreenState.COMBAT
+        return if (hasTimerPattern || hasInGameKeywords) {
+            ScreenState.IN_MATCH
+        } else {
+            ScreenState.OUTSIDE_GAME
         }
-
-        if (hasTimerPattern || hasInGameKeywords || darkPixels < 22) {
-            return ScreenState.IN_MATCH
-        }
-
-        if (darkPixels >= 23 && nonBlackPixels < 5) {
-            return ScreenState.LOADING
-        }
-
-        return if (nonBlackPixels > 10) ScreenState.IN_MATCH else ScreenState.OUTSIDE_GAME
     }
 }

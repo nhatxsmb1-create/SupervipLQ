@@ -59,12 +59,17 @@ import com.example.ui.theme.ImperialGoldLight
 import com.example.ui.theme.TextGold
 import com.example.ui.theme.VictoryGreen
 
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.material.icons.filled.PlayArrow
+
 @Composable
 fun CoachOverlayScreen(
     transparencyAlpha: Float = 0.94f,
     onCloseClick: () -> Unit,
     onToggleExpand: () -> Unit,
-    onToggleVoiceMute: () -> Unit
+    onToggleVoiceMute: () -> Unit,
+    onDrag: (dx: Int, dy: Int) -> Unit = { _, _ -> }
 ) {
     val tacticalState by CoachStateHub.tacticalState.collectAsState()
     val debugState by CoachStateHub.debugState.collectAsState()
@@ -115,7 +120,14 @@ fun CoachOverlayScreen(
         Column(modifier = Modifier.fillMaxWidth()) {
             // Thanh Tiêu Đề Esports Kéo Thả
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            onDrag(dragAmount.x.toInt(), dragAmount.y.toInt())
+                        }
+                    },
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
