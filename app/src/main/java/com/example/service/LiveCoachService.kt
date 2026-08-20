@@ -151,6 +151,13 @@ class LiveCoachService : Service() {
         }
 
         if (resultCode != 0 && resultData != null) {
+            projectionResultCode = resultCode
+            projectionResultData = resultData
+
+            if (autoCaptureManager != null) {
+                return
+            }
+
             val mpManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
             try {
                 val mp = mpManager?.getMediaProjection(resultCode, resultData)

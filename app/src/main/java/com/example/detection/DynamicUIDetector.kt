@@ -79,7 +79,7 @@ class DynamicUIDetector {
 
         return DetectedUIComponent(
             componentName = "TopBar",
-            boundingBox = RectF(0.20f, 0.00f, 0.80f, 0.18f),
+            boundingBox = RectF(0.00f, 0.00f, 1.00f, 0.18f),
             confidence = (conf * 0.9f).coerceIn(0.6f, 0.95f),
             detectionMethod = DetectionMethod.COLOR_HEURISTIC
         )

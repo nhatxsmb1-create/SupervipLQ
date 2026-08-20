@@ -12,6 +12,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.util.Log
 import com.example.model.ScreenState
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -31,7 +32,10 @@ class AutoCaptureManager(
     private var backgroundThread: HandlerThread? = null
     private var backgroundHandler: Handler? = null
 
-    private val _capturedFrames = MutableSharedFlow<Bitmap>(extraBufferCapacity = 2)
+    private val _capturedFrames = MutableSharedFlow<Bitmap>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val capturedFrames: SharedFlow<Bitmap> = _capturedFrames.asSharedFlow()
 
     private var isCapturing = false
@@ -118,26 +122,33 @@ class AutoCaptureManager(
     fun getCurrentIntervalMs(): Long = currentIntervalMs
 
     private fun imageToBitmap(image: Image): Bitmap? {
-        val planes = image.planes
-        val buffer = planes[0].buffer
-        val pixelStride = planes[0].pixelStride
-        val rowStride = planes[0].rowStride
-        val rowPadding = rowStride - pixelStride * displayWidth
+        return try {
+            val planes = image.planes
+            if (planes.isEmpty()) return null
+            val buffer = planes[0].buffer ?: return null
+            buffer.rewind()
 
-        val bitmap = Bitmap.createBitmap(
-            displayWidth + rowPadding / pixelStride,
-            displayHeight,
-            Bitmap.Config.ARGB_8888
-        )
-        bitmap.copyPixelsFromBuffer(buffer)
+            val pixelStride = planes[0].pixelStride
+            val rowStride = planes[0].rowStride
+            val imgWidth = image.width
+            val imgHeight = image.height
 
-        // Crop padding if any
-        return if (rowPadding > 0) {
-            val cropped = Bitmap.createBitmap(bitmap, 0, 0, displayWidth, displayHeight)
-            bitmap.recycle()
-            cropped
-        } else {
-            bitmap
+            val padding = rowStride - pixelStride * imgWidth
+            val bitmapWidth = imgWidth + padding / pixelStride
+
+            val bitmap = Bitmap.createBitmap(bitmapWidth, imgHeight, Bitmap.Config.ARGB_8888)
+            bitmap.copyPixelsFromBuffer(buffer)
+
+            if (bitmapWidth != imgWidth) {
+                val cropped = Bitmap.createBitmap(bitmap, 0, 0, imgWidth, imgHeight)
+                bitmap.recycle()
+                cropped
+            } else {
+                bitmap
+            }
+        } catch (e: Exception) {
+            Log.e("AutoCaptureManager", "Error converting image to bitmap: ${e.message}")
+            null
         }
     }
 

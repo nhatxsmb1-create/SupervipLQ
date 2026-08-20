@@ -56,6 +56,8 @@ class VisionAnalysisEngine : IVisionEngine {
 
     private var cachedGameState: GameState = GameState()
 
+    private var lastFullAnalysisTimeMs: Long = 0L
+
     override suspend fun analyzeFrameToGameState(
         bitmap: Bitmap,
         captureIntervalMs: Long
@@ -68,7 +70,10 @@ class VisionAnalysisEngine : IVisionEngine {
 
         // 1. Frame Change Detection
         val changeResult = frameChangeDetector.checkFrameChange(bitmap)
-        if (!changeResult.hasChanged && cachedGameState.screenState != ScreenState.OUTSIDE_GAME) {
+        val timeSinceLastFull = startTime - lastFullAnalysisTimeMs
+        val shouldForceAnalysis = timeSinceLastFull > 3000L || cachedGameState.screenState == ScreenState.OUTSIDE_GAME
+
+        if (!changeResult.hasChanged && !shouldForceAnalysis) {
             // Screen has not changed significantly, return cached state with updated stats
             return@withContext cachedGameState.copy(
                 frameProcessingTimeMs = System.currentTimeMillis() - startTime,
@@ -77,34 +82,57 @@ class VisionAnalysisEngine : IVisionEngine {
             )
         }
 
+        lastFullAnalysisTimeMs = startTime
+
         try {
             // 2. Dynamic UI Component Detection
             val detectedComponents = dynamicUIDetector.detectUIComponents(bitmap)
 
-            // 3. Dynamic ROI Crop for Top Header (Timer, Scores)
-            val topBarComponent = detectedComponents.find { it.componentName == "TopBar" }
-            var topBarCrop: Bitmap? = null
-            var ocrText = ""
+            // 3. Multi-ROI Targeted Crop for High-Speed High-Accuracy OCR
+            val ocrTextBuilder = StringBuilder()
 
+            // ROI A: Top Right Header (Timer 00:45, KDA 1 vs 0, Ping)
+            var timerCrop: Bitmap? = null
             try {
-                if (topBarComponent != null) {
-                    topBarCrop = dynamicROIExtractor.cropComponent(bitmap, topBarComponent)
+                timerCrop = dynamicROIExtractor.cropNormalizedRegion(bitmap, RectF(0.65f, 0.00f, 0.92f, 0.20f))
+                if (timerCrop != null && !timerCrop.isRecycled) {
+                    val t = recognizeText(timerCrop)
+                    if (t.isNotBlank()) ocrTextBuilder.append(t).append("\n")
                 }
-                if (topBarCrop == null && !bitmap.isRecycled && bitmap.width > 50 && bitmap.height > 50) {
-                    // Fallback: Crop top 25% of screen for timer/header OCR
-                    val topH = (bitmap.height * 0.25f).toInt().coerceIn(10, bitmap.height)
-                    topBarCrop = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, topH)
-                }
-                if (topBarCrop != null && !topBarCrop.isRecycled) {
-                    ocrText = recognizeText(topBarCrop)
-                }
-            } catch (e: Exception) {
-                Log.w("VisionEngine", "TopBar crop OCR error: ${e.message}")
+            } catch (_: Exception) {
             } finally {
-                topBarCrop?.recycle()
+                timerCrop?.recycle()
             }
 
-            // Fallback: If header OCR is blank or missed numbers, perform OCR on full frame
+            // ROI B: Bottom Spell Buttons (Biến về, Hồi máu, Tốc biến, Trừng trị)
+            var spellsCrop: Bitmap? = null
+            try {
+                spellsCrop = dynamicROIExtractor.cropNormalizedRegion(bitmap, RectF(0.35f, 0.75f, 0.65f, 1.00f))
+                if (spellsCrop != null && !spellsCrop.isRecycled) {
+                    val t = recognizeText(spellsCrop)
+                    if (t.isNotBlank()) ocrTextBuilder.append(t).append("\n")
+                }
+            } catch (_: Exception) {
+            } finally {
+                spellsCrop?.recycle()
+            }
+
+            // ROI C: Left Shop & Gold (Gold 39051)
+            var goldCrop: Bitmap? = null
+            try {
+                goldCrop = dynamicROIExtractor.cropNormalizedRegion(bitmap, RectF(0.00f, 0.25f, 0.22f, 0.55f))
+                if (goldCrop != null && !goldCrop.isRecycled) {
+                    val t = recognizeText(goldCrop)
+                    if (t.isNotBlank()) ocrTextBuilder.append(t).append("\n")
+                }
+            } catch (_: Exception) {
+            } finally {
+                goldCrop?.recycle()
+            }
+
+            var ocrText = ocrTextBuilder.toString().trim()
+
+            // Fallback: If ROIs missed timer digits, perform OCR on full frame
             if (ocrText.isBlank() || !ocrText.contains(Regex("\\d"))) {
                 val fullText = recognizeText(bitmap)
                 if (fullText.isNotBlank()) {
