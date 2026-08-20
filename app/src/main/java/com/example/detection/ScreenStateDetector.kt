@@ -62,37 +62,23 @@ class ScreenStateDetector {
             return ScreenState.HERO_SELECTION
         }
 
+        val w = bitmap.width
+        val h = bitmap.height
+        val isLandscape = w >= h
+
         val hasStrictLobbyText = ocrText.contains("Bắt Đầu Tìm Trận", ignoreCase = true) ||
                 ocrText.contains("Mời Bè Bạn", ignoreCase = true) ||
                 ocrText.contains("Sảnh Chờ", ignoreCase = true) ||
                 ocrText.contains("Gia Nhập Phòng", ignoreCase = true) ||
-                ocrText.contains("Tìm Trận", ignoreCase = true)
+                ocrText.contains("Đang tìm trận", ignoreCase = true)
 
         if (hasStrictLobbyText && !hasTimerPattern && !hasInGameKeywords && !hasHeroSelectionText) {
             return ScreenState.GAME_MENU
         }
 
-        val w = bitmap.width
-        val h = bitmap.height
-        val isLandscape = w >= h
-
-        // If screen is in landscape (Arena of Valor game orientation) and no lobby text was matched:
+        // If screen is in landscape mode (Arena of Valor aspect ratio > 1), classify as IN_MATCH
         if (isLandscape) {
-            var brightSkillPixels = 0
-            val samples = 30
-            for (i in 0 until samples) {
-                val cx = (w * (0.15f + (i % 6) * 0.14f)).toInt().coerceIn(0, w - 1)
-                val cy = (h * (0.15f + (i / 6) * 0.15f)).toInt().coerceIn(0, h - 1)
-                val pixel = bitmap.getPixel(cx, cy)
-                val luma = (Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)) / 3
-                if (luma > 210) brightSkillPixels++
-            }
-
-            return if (brightSkillPixels >= 8) {
-                ScreenState.COMBAT
-            } else {
-                ScreenState.IN_MATCH
-            }
+            return ScreenState.IN_MATCH
         }
 
         return if (hasTimerPattern || hasInGameKeywords) {

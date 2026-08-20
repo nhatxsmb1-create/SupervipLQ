@@ -42,7 +42,7 @@ class AutoCaptureManager(
     private var lastCaptureTimeMs = 0L
 
     @Volatile
-    private var currentIntervalMs: Long = 3000L // Default to low frequency outside match
+    private var currentIntervalMs: Long = 800L // Fast initial capture to immediately detect game
 
     fun startCapture(projection: MediaProjection) {
         if (isCapturing) return

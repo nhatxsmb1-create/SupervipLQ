@@ -165,16 +165,35 @@ class LiveCoachService : Service() {
                 Log.d("LiveCoachService", "MediaProjection acquired successfully")
 
                 if (mp != null) {
+                    val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                    val display = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        display
+                    } else {
+                        @Suppress("DEPRECATION")
+                        wm.defaultDisplay
+                    }
                     val metrics = resources.displayMetrics
-                    val rawW = metrics.widthPixels
-                    val rawH = metrics.heightPixels
-                    val realW = maxOf(rawW, rawH).coerceAtLeast(1280)
-                    val realH = minOf(rawW, rawH).coerceAtLeast(720)
+                    val realW = if (display != null) {
+                        val bounds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            wm.currentWindowMetrics.bounds
+                        } else null
+                        bounds?.width() ?: metrics.widthPixels
+                    } else metrics.widthPixels
+
+                    val realH = if (display != null) {
+                        val bounds = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                            wm.currentWindowMetrics.bounds
+                        } else null
+                        bounds?.height() ?: metrics.heightPixels
+                    } else metrics.heightPixels
+
+                    val captureW = maxOf(realW, realH).coerceAtLeast(1280)
+                    val captureH = minOf(realW, realH).coerceAtLeast(720)
                     val realDpi = metrics.densityDpi.coerceAtLeast(240)
 
                     val acm = AutoCaptureManager(
-                        displayWidth = realW,
-                        displayHeight = realH,
+                        displayWidth = captureW,
+                        displayHeight = captureH,
                         displayDpi = realDpi
                     )
                     autoCaptureManager = acm
