@@ -159,8 +159,10 @@ class LiveCoachService : Service() {
 
                 if (mp != null) {
                     val metrics = resources.displayMetrics
-                    val realW = metrics.widthPixels.coerceAtLeast(1280)
-                    val realH = metrics.heightPixels.coerceAtLeast(720)
+                    val rawW = metrics.widthPixels
+                    val rawH = metrics.heightPixels
+                    val realW = maxOf(rawW, rawH).coerceAtLeast(1280)
+                    val realH = minOf(rawW, rawH).coerceAtLeast(720)
                     val realDpi = metrics.densityDpi.coerceAtLeast(240)
 
                     val acm = AutoCaptureManager(

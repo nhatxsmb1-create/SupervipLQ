@@ -28,8 +28,10 @@ class ScreenStateDetector {
             return ScreenState.SHOP_OPEN
         }
 
-        // Check OCR text hints for game screen, hero selection ban-pick, or match timer pattern
-        val hasTimerPattern = ocrText.contains(Regex("(\\d{1,2})[:.](\\d{2})"))
+        // Timer regex matching (e.g., 00:24, 0:24, 00.24, 00 24, 15:30)
+        val hasTimerPattern = ocrText.contains(Regex("(\\d{1,2})\\s*[:.bB1lI-]\\s*(\\d{2})")) ||
+                ocrText.contains(Regex("\\d{1,2}:\\d{2}"))
+
         val hasHeroSelectionText = ocrText.contains("Chọn tướng", ignoreCase = true) ||
                 ocrText.contains("Khóa", ignoreCase = true) ||
                 ocrText.contains("Cấm", ignoreCase = true) ||
@@ -37,9 +39,7 @@ class ScreenStateDetector {
                 ocrText.contains("Pick", ignoreCase = true) ||
                 ocrText.contains("Đội Xanh", ignoreCase = true) ||
                 ocrText.contains("Đội Đỏ", ignoreCase = true) ||
-                ocrText.contains("Trợ thủ", ignoreCase = true) ||
                 ocrText.contains("Phép bổ trợ", ignoreCase = true) ||
-                ocrText.contains("Trang phục", ignoreCase = true) ||
                 ocrText.contains("Ngọc bổ trợ", ignoreCase = true)
 
         val hasInGameKeywords = ocrText.contains("vs", ignoreCase = true) ||
@@ -48,19 +48,27 @@ class ScreenStateDetector {
                 ocrText.contains("Caesar", ignoreCase = true) ||
                 ocrText.contains("Rồng", ignoreCase = true) ||
                 ocrText.contains("Trụ", ignoreCase = true) ||
-                ocrText.contains("Chiến", ignoreCase = true)
+                ocrText.contains("Chiến", ignoreCase = true) ||
+                ocrText.contains("Biến về", ignoreCase = true) ||
+                ocrText.contains("Hồi máu", ignoreCase = true) ||
+                ocrText.contains("Trừng trị", ignoreCase = true) ||
+                ocrText.contains("Tốc biến", ignoreCase = true) ||
+                ocrText.contains("Bộc phá", ignoreCase = true) ||
+                ocrText.contains("ms", ignoreCase = true) ||
+                ocrText.contains("fps", ignoreCase = true) ||
+                ocrText.contains("UID", ignoreCase = true)
 
         if (hasHeroSelectionText && !hasTimerPattern && !hasInGameKeywords) {
             return ScreenState.HERO_SELECTION
         }
 
-        val hasLobbyText = ocrText.contains("Đấu Luyện", ignoreCase = true) ||
-                ocrText.contains("Đấu Hạng", ignoreCase = true) ||
-                ocrText.contains("Bắt Đầu", ignoreCase = true) ||
-                ocrText.contains("Sảnh", ignoreCase = true) ||
-                ocrText.contains("Lobby", ignoreCase = true)
+        val hasStrictLobbyText = ocrText.contains("Bắt Đầu Tìm Trận", ignoreCase = true) ||
+                ocrText.contains("Mời Bè Bạn", ignoreCase = true) ||
+                ocrText.contains("Sảnh Chờ", ignoreCase = true) ||
+                ocrText.contains("Gia Nhập Phòng", ignoreCase = true) ||
+                ocrText.contains("Tìm Trận", ignoreCase = true)
 
-        if (hasLobbyText && !hasTimerPattern && !hasInGameKeywords && !hasHeroSelectionText) {
+        if (hasStrictLobbyText && !hasTimerPattern && !hasInGameKeywords && !hasHeroSelectionText) {
             return ScreenState.GAME_MENU
         }
 
