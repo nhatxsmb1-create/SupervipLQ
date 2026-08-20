@@ -17,7 +17,7 @@ class VoiceCoach(context: Context) : TextToSpeech.OnInitListener {
 
     override fun onInit(status: Int) {
         if (status == TextToSpeech.SUCCESS) {
-            val vietnameseLocale = Locale("vi", "VN")
+            val vietnameseLocale = Locale.forLanguageTag("vi-VN")
             val result = tts?.setLanguage(vietnameseLocale)
 
             if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {

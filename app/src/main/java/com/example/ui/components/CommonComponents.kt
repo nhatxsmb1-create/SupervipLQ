@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.CrisisAlert
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.PlayArrow
@@ -315,7 +316,7 @@ fun EsportsHeroBanner(
                         contentColor = ArcaneCyan,
                         containerColor = Color(0x3300F0FF)
                     ),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
+                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                         brush = Brush.horizontalGradient(listOf(ArcaneCyan, Color(0xFF0066CC)))
                     ),
                     modifier = Modifier
@@ -620,7 +621,7 @@ fun EsportsTacticalRadarCard(
                                 .border(1.dp, ArcaneCyan.copy(alpha = 0.5f), CircleShape)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.VolumeUp,
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                 contentDescription = "Phát giọng nói",
                                 tint = ArcaneCyan,
                                 modifier = Modifier.size(18.dp)
@@ -677,7 +678,7 @@ fun EsportsTacticalRadarCard(
                             modifier = Modifier.size(32.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.VolumeUp,
+                                imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                                 contentDescription = "Phát cảnh báo",
                                 tint = dangerColor,
                                 modifier = Modifier.size(18.dp)

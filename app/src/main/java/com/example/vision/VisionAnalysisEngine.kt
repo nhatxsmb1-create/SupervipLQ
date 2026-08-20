@@ -1,9 +1,15 @@
 package com.example.vision
 
 import android.graphics.Bitmap
-import android.graphics.Color
+import android.graphics.RectF
 import android.util.Log
+import com.example.autocapture.FrameChangeDetector
+import com.example.detection.DynamicROIExtractor
+import com.example.detection.DynamicUIDetector
+import com.example.detection.ScreenStateDetector
 import com.example.model.DetectedScreenMode
+import com.example.model.GameState
+import com.example.model.ScreenState
 import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
@@ -20,11 +26,16 @@ data class VisionScanResult(
     val detectedAllyKills: Int? = null,
     val detectedEnemyKills: Int? = null,
     val rawOcrSummary: String = "",
-    val confidence: Float = 0.85f
+    val confidence: Float = 0.85f,
+    val gameState: GameState? = null
 )
 
 interface IVisionEngine {
     suspend fun analyzeFrame(bitmap: Bitmap): VisionScanResult
+    suspend fun analyzeFrameToGameState(
+        bitmap: Bitmap,
+        captureIntervalMs: Long = 1000L
+    ): GameState
     fun close()
 }
 
@@ -34,26 +45,62 @@ class VisionAnalysisEngine : IVisionEngine {
         TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
     }
 
+    private val frameChangeDetector = FrameChangeDetector()
+    private val dynamicUIDetector = DynamicUIDetector()
+    private val dynamicROIExtractor = DynamicROIExtractor()
+    private val screenStateDetector = ScreenStateDetector()
+
     private val timePattern = Pattern.compile("(\\d{1,2})[:.](\\d{2})")
     private val scorePattern = Pattern.compile("(\\d{1,2})\\s*[-:]\\s*(\\d{1,2})")
     private val goldPattern = Pattern.compile("([\\d.]+)[kK]?\\s*vs\\s*([\\d.]+)[kK]?", Pattern.CASE_INSENSITIVE)
 
-    override suspend fun analyzeFrame(bitmap: Bitmap): VisionScanResult = withContext(Dispatchers.Default) {
-        try {
-            // 1. Fast heuristic screen mode detection via pixel distribution & color checks
-            val screenMode = detectScreenModeFast(bitmap)
+    private var cachedGameState: GameState = GameState()
 
-            // 2. Crop top banner / header region for fast OCR (Timer, Kills, Gold)
+    override suspend fun analyzeFrameToGameState(
+        bitmap: Bitmap,
+        captureIntervalMs: Long
+    ): GameState = withContext(Dispatchers.Default) {
+        val startTime = System.currentTimeMillis()
+
+        if (bitmap.isRecycled) {
+            return@withContext GameState(screenState = ScreenState.OUTSIDE_GAME)
+        }
+
+        // 1. Frame Change Detection
+        val changeResult = frameChangeDetector.checkFrameChange(bitmap)
+        if (!changeResult.hasChanged && cachedGameState.screenState != ScreenState.OUTSIDE_GAME) {
+            // Screen has not changed significantly, return cached state with updated stats
+            return@withContext cachedGameState.copy(
+                frameProcessingTimeMs = System.currentTimeMillis() - startTime,
+                captureIntervalMs = captureIntervalMs,
+                frameChangedPercent = changeResult.differencePercent
+            )
+        }
+
+        try {
+            // 2. Dynamic UI Component Detection
+            val detectedComponents = dynamicUIDetector.detectUIComponents(bitmap)
+
+            // 3. Dynamic ROI Crop for Top Header (Timer, Scores)
+            val topBarComponent = detectedComponents.find { it.componentName == "TopBar" }
+            var topBarCrop: Bitmap? = null
             var ocrText = ""
-            var headerCrop: Bitmap? = null
+
             try {
-                headerCrop = cropHeaderRegion(bitmap)
-                ocrText = recognizeText(headerCrop)
+                if (topBarComponent != null) {
+                    topBarCrop = dynamicROIExtractor.cropComponent(bitmap, topBarComponent)
+                }
+                if (topBarCrop != null) {
+                    ocrText = recognizeText(topBarCrop)
+                }
             } finally {
-                headerCrop?.recycle()
+                topBarCrop?.recycle()
             }
 
-            // 3. Parse parsed OCR strings
+            // 4. Screen State Classification
+            val screenState = screenStateDetector.detectScreenState(bitmap, ocrText, detectedComponents)
+
+            // 5. OCR parsing
             var parsedTimeSec: Int? = null
             var parsedAllyKills: Int? = null
             var parsedEnemyKills: Int? = null
@@ -81,58 +128,66 @@ class VisionAnalysisEngine : IVisionEngine {
                 }
             }
 
-            VisionScanResult(
-                detectedMode = screenMode,
-                detectedTimeSeconds = parsedTimeSec,
-                detectedGoldDiff = parsedGoldDiff,
-                detectedAllyKills = parsedAllyKills,
-                detectedEnemyKills = parsedEnemyKills,
-                rawOcrSummary = ocrText.take(120).replace("\n", " "),
-                confidence = 0.90f
+            val isMatchActive = screenState in listOf(
+                ScreenState.IN_MATCH,
+                ScreenState.SCOREBOARD_OPEN,
+                ScreenState.SHOP_OPEN,
+                ScreenState.COMBAT
             )
+
+            val confidence = when {
+                parsedTimeSec != null -> 0.92f
+                isMatchActive -> 0.75f
+                screenState == ScreenState.GAME_MENU -> 0.80f
+                else -> 0.40f
+            }
+
+            val processingTime = System.currentTimeMillis() - startTime
+
+            val newGameState = GameState(
+                matchActive = isMatchActive,
+                screenState = screenState,
+                matchTimeSeconds = parsedTimeSec ?: cachedGameState.matchTimeSeconds,
+                allyKills = parsedAllyKills ?: cachedGameState.allyKills,
+                enemyKills = parsedEnemyKills ?: cachedGameState.enemyKills,
+                goldDifference = parsedGoldDiff ?: cachedGameState.goldDifference,
+                scoreboardOpen = (screenState == ScreenState.SCOREBOARD_OPEN),
+                shopOpen = (screenState == ScreenState.SHOP_OPEN),
+                overallConfidence = confidence,
+                frameProcessingTimeMs = processingTime,
+                captureIntervalMs = captureIntervalMs,
+                frameChangedPercent = changeResult.differencePercent,
+                detectedComponents = detectedComponents,
+                rawOcrSummary = ocrText.take(120).replace("\n", " ")
+            )
+
+            cachedGameState = newGameState
+            newGameState
         } catch (e: Exception) {
-            Log.e("VisionEngine", "Frame analysis failed", e)
-            VisionScanResult(
-                detectedMode = DetectedScreenMode.IDLE,
-                rawOcrSummary = "Vision fallback mode: active"
-            )
+            Log.e("VisionEngine", "GameState analysis failed", e)
+            cachedGameState
         }
     }
 
-    private fun detectScreenModeFast(bitmap: Bitmap): DetectedScreenMode {
-        if (bitmap.isRecycled) return DetectedScreenMode.IDLE
-        val width = bitmap.width
-        val height = bitmap.height
-
-        var darkCenterPixels = 0
-        var brightSkillPixels = 0
-        val samplePoints = 20
-
-        for (i in 0 until samplePoints) {
-            val cx = (width * 0.3 + (i % 5) * (width * 0.1)).toInt().coerceIn(0, width - 1)
-            val cy = (height * 0.3 + (i / 5) * (height * 0.1)).toInt().coerceIn(0, height - 1)
-            val pixel = bitmap.getPixel(cx, cy)
-            val r = Color.red(pixel)
-            val g = Color.green(pixel)
-            val b = Color.blue(pixel)
-            val brightness = (r + g + b) / 3
-
-            if (brightness < 40) darkCenterPixels++
-            if (brightness > 210) brightSkillPixels++
-        }
-
-        return when {
-            darkCenterPixels > 14 -> DetectedScreenMode.SCOREBOARD_OPEN
-            brightSkillPixels > 8 -> DetectedScreenMode.COMBAT
+    override suspend fun analyzeFrame(bitmap: Bitmap): VisionScanResult {
+        val gs = analyzeFrameToGameState(bitmap)
+        val mode = when (gs.screenState) {
+            ScreenState.SCOREBOARD_OPEN -> DetectedScreenMode.SCOREBOARD_OPEN
+            ScreenState.SHOP_OPEN -> DetectedScreenMode.SHOP_OPEN
+            ScreenState.COMBAT -> DetectedScreenMode.COMBAT
+            ScreenState.IN_MATCH -> DetectedScreenMode.IDLE
             else -> DetectedScreenMode.IDLE
         }
-    }
-
-    private fun cropHeaderRegion(bitmap: Bitmap): Bitmap {
-        val w = bitmap.width
-        val h = bitmap.height
-        val topH = (h * 0.18f).toInt().coerceIn(1, h)
-        return Bitmap.createBitmap(bitmap, 0, 0, w, topH)
+        return VisionScanResult(
+            detectedMode = mode,
+            detectedTimeSeconds = gs.matchTimeSeconds,
+            detectedGoldDiff = gs.goldDifference,
+            detectedAllyKills = gs.allyKills,
+            detectedEnemyKills = gs.enemyKills,
+            rawOcrSummary = gs.rawOcrSummary,
+            confidence = gs.overallConfidence,
+            gameState = gs
+        )
     }
 
     private suspend fun recognizeText(bitmap: Bitmap): String =

@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.debug.DeveloperDebugHudCard
 import com.example.model.CoachStatus
 import com.example.model.DangerLevel
 import com.example.ui.theme.AlertOrange
@@ -66,6 +67,7 @@ fun CoachOverlayScreen(
     onToggleVoiceMute: () -> Unit
 ) {
     val tacticalState by CoachStateHub.tacticalState.collectAsState()
+    val debugState by CoachStateHub.debugState.collectAsState()
     val isExpanded by CoachStateHub.isOverlayExpanded.collectAsState()
 
     val dangerColor = when (tacticalState.dangerLevel) {
@@ -444,6 +446,11 @@ fun CoachOverlayScreen(
                         }
                     }
                 }
+            }
+
+            if (debugState.isEnabled) {
+                Spacer(modifier = Modifier.height(8.dp))
+                DeveloperDebugHudCard(debugState = debugState)
             }
         }
     }

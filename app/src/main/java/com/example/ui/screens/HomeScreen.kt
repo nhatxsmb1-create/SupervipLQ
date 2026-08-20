@@ -247,7 +247,7 @@ fun HomeScreen(
                             contentColor = SuccessGreen,
                             containerColor = Color(0x2200E676)
                         ),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                             brush = androidx.compose.ui.graphics.SolidColor(SuccessGreen)
                         ),
                         shape = RoundedCornerShape(12.dp),
@@ -271,7 +271,7 @@ fun HomeScreen(
                             contentColor = Color(0xFFFF2A4D),
                             containerColor = Color(0x22FF2A4D)
                         ),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
+                        border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
                             brush = androidx.compose.ui.graphics.SolidColor(Color(0xFFFF2A4D))
                         ),
                         shape = RoundedCornerShape(12.dp),

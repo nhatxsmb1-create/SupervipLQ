@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.RecordVoiceOver
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.SupportedGame
+import com.example.service.CoachStateHub
 import com.example.ui.theme.ArcaneCyan
 import com.example.ui.theme.EsportsCardGradient
 import com.example.ui.theme.EsportsDarkBg
@@ -218,7 +220,7 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Icon(
-                            imageVector = Icons.Default.VolumeUp,
+                            imageVector = Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "Test giọng nói",
                             tint = Color(0xFF261900),
                             modifier = Modifier.size(16.dp)
@@ -288,6 +290,29 @@ fun SettingsScreen(viewModel: SettingsViewModel) {
                     colors = SliderDefaults.colors(thumbColor = ImperialGold, activeTrackColor = ImperialGold),
                     modifier = Modifier.testTag("slider_overlay_alpha")
                 )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                val debugState by CoachStateHub.debugState.collectAsState()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text(text = "Chế Độ Nhà Phát Triển (Debug HUD)", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = ArcaneCyan)
+                        Text(text = "Hiển thị ROI bounding box, confidence, OCR log & frame time", fontSize = 11.sp, color = TextMuted)
+                    }
+                    Switch(
+                        checked = debugState.isEnabled,
+                        onCheckedChange = { CoachStateHub.setDebugHudEnabled(it) },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color(0xFF00363D),
+                            checkedTrackColor = ArcaneCyan
+                        ),
+                        modifier = Modifier.testTag("switch_debug_hud")
+                    )
+                }
             }
         }
 

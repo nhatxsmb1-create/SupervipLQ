@@ -34,7 +34,10 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.MainActivity
+import com.example.autocapture.AutoCaptureManager
 import com.example.model.DetectedScreenMode
+import com.example.model.GameState
+import com.example.model.ScreenState
 import com.example.tactical.TacticalEngine
 import com.example.ui.theme.ArenaCoachTheme
 import com.example.vision.VisionAnalysisEngine
@@ -43,6 +46,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.abs
@@ -88,6 +92,7 @@ class LiveCoachService : Service() {
 
     private val tacticalEngine = TacticalEngine()
     private val visionEngine = VisionAnalysisEngine()
+    private var autoCaptureManager: AutoCaptureManager? = null
     private var voiceCoach: VoiceCoach? = null
 
     private var mediaProjection: MediaProjection? = null
@@ -138,15 +143,55 @@ class LiveCoachService : Service() {
 
     private fun setupMediaProjectionIfAvailable(intent: Intent?) {
         val resultCode = intent?.getIntExtra(EXTRA_RESULT_CODE, projectionResultCode) ?: projectionResultCode
-        val resultData = intent?.getParcelableExtra<Intent>(EXTRA_RESULT_DATA) ?: projectionResultData
+        val resultData = if (intent != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java) ?: projectionResultData
+        } else {
+            @Suppress("DEPRECATION")
+            intent?.getParcelableExtra(EXTRA_RESULT_DATA) ?: projectionResultData
+        }
 
         if (resultCode != 0 && resultData != null) {
             val mpManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as? MediaProjectionManager
             try {
-                mediaProjection = mpManager?.getMediaProjection(resultCode, resultData)
+                val mp = mpManager?.getMediaProjection(resultCode, resultData)
+                mediaProjection = mp
                 Log.d("LiveCoachService", "MediaProjection acquired successfully")
+
+                if (mp != null) {
+                    val acm = AutoCaptureManager()
+                    autoCaptureManager = acm
+                    acm.startCapture(mp)
+                    observeAutoCapturedFrames(acm)
+                }
             } catch (e: Exception) {
                 Log.e("LiveCoachService", "Failed to get MediaProjection", e)
+            }
+        }
+    }
+
+    private fun observeAutoCapturedFrames(acm: AutoCaptureManager) {
+        serviceScope.launch(Dispatchers.Default) {
+            acm.capturedFrames.collectLatest { bitmap ->
+                val gameState = visionEngine.analyzeFrameToGameState(
+                    bitmap = bitmap,
+                    captureIntervalMs = acm.getCurrentIntervalMs()
+                )
+
+                CoachStateHub.updateGameState(gameState)
+                acm.setAdaptiveState(gameState.screenState)
+
+                val currentState = CoachStateHub.tacticalState.value
+                val eval = tacticalEngine.evaluateGameState(gameState, currentState)
+
+                CoachStateHub.updateState(eval.newState)
+
+                eval.voiceCallout?.let { phrase ->
+                    voiceCoach?.speakCallout(
+                        callout = phrase,
+                        tag = eval.calloutTag,
+                        priority = eval.calloutPriority
+                    )
+                }
             }
         }
     }
@@ -246,46 +291,32 @@ class LiveCoachService : Service() {
     private fun startAdaptiveCoachLoop() {
         analysisLoopJob?.cancel()
         analysisLoopJob = serviceScope.launch {
-            var elapsedSeconds = 0
-
             while (isActive) {
+                delay(2000L)
                 val currentState = CoachStateHub.tacticalState.value
 
-                // Determine interval based on game state (Idle: 5s, Combat: 1s, Scoreboard/Shop: immediate)
-                val delayMs = when (currentState.detectedUIMode) {
-                    DetectedScreenMode.COMBAT -> 1000L
-                    DetectedScreenMode.SCOREBOARD_OPEN -> 800L
-                    DetectedScreenMode.SHOP_OPEN -> 800L
-                    DetectedScreenMode.MINIMAP_ALERT -> 2000L
-                    DetectedScreenMode.IDLE -> 5000L
-                }
-
-                delay(delayMs)
-                elapsedSeconds += (delayMs / 1000).toInt().coerceAtLeast(1)
-
-                // Tactical Rule-based Evaluation
-                val eval = tacticalEngine.evaluate(
-                    currentState = currentState,
-                    matchTimeSeconds = if (currentState.gameDataValid) currentState.matchTimeSeconds + (delayMs / 1000).toInt().coerceAtLeast(1) else 0,
-                    goldDiff = currentState.teamGoldDiff,
-                    allyKills = currentState.allyKills,
-                    enemyKills = currentState.enemyKills,
-                    allyTowers = currentState.allyTowers,
-                    enemyTowers = currentState.enemyTowers,
-                    detectedMode = currentState.detectedUIMode,
-                    forceValid = isSimulating || currentState.gameDataValid
-                )
-
-                // Update shared state
-                CoachStateHub.updateState(eval.newState)
-
-                // Trigger voice callout if applicable
-                eval.voiceCallout?.let { phrase ->
-                    voiceCoach?.speakCallout(
-                        callout = phrase,
-                        tag = eval.calloutTag,
-                        priority = eval.calloutPriority
+                if (autoCaptureManager == null || isSimulating) {
+                    val eval = tacticalEngine.evaluate(
+                        currentState = currentState,
+                        matchTimeSeconds = if (currentState.gameDataValid) currentState.matchTimeSeconds + 2 else 0,
+                        goldDiff = currentState.teamGoldDiff,
+                        allyKills = currentState.allyKills,
+                        enemyKills = currentState.enemyKills,
+                        allyTowers = currentState.allyTowers,
+                        enemyTowers = currentState.enemyTowers,
+                        detectedMode = currentState.detectedUIMode,
+                        forceValid = isSimulating || currentState.gameDataValid
                     )
+
+                    CoachStateHub.updateState(eval.newState)
+
+                    eval.voiceCallout?.let { phrase ->
+                        voiceCoach?.speakCallout(
+                            callout = phrase,
+                            tag = eval.calloutTag,
+                            priority = eval.calloutPriority
+                        )
+                    }
                 }
             }
         }
@@ -335,6 +366,8 @@ class LiveCoachService : Service() {
 
     private fun stopServiceAndCleanup() {
         analysisLoopJob?.cancel()
+        autoCaptureManager?.stopCapture()
+        autoCaptureManager = null
         mediaProjection?.stop()
         mediaProjection = null
 

@@ -1,8 +1,10 @@
 package com.example.service
 
+import com.example.debug.DebugState
 import com.example.model.CoachStatus
 import com.example.model.DangerLevel
 import com.example.model.DetectedScreenMode
+import com.example.model.GameState
 import com.example.model.ItemRecommendation
 import com.example.model.ObjectiveTarget
 import com.example.model.TacticalState
@@ -16,6 +18,12 @@ object CoachStateHub {
     private val _tacticalState = MutableStateFlow(TacticalState())
     val tacticalState: StateFlow<TacticalState> = _tacticalState.asStateFlow()
 
+    private val _gameState = MutableStateFlow(GameState())
+    val gameState: StateFlow<GameState> = _gameState.asStateFlow()
+
+    private val _debugState = MutableStateFlow(DebugState())
+    val debugState: StateFlow<DebugState> = _debugState.asStateFlow()
+
     private val _isServiceRunning = MutableStateFlow(false)
     val isServiceRunning: StateFlow<Boolean> = _isServiceRunning.asStateFlow()
 
@@ -24,6 +32,15 @@ object CoachStateHub {
 
     fun updateState(newState: TacticalState) {
         _tacticalState.value = newState
+    }
+
+    fun updateGameState(newGameState: GameState) {
+        _gameState.value = newGameState
+        _debugState.value = _debugState.value.copy(gameState = newGameState)
+    }
+
+    fun setDebugHudEnabled(enabled: Boolean) {
+        _debugState.value = _debugState.value.copy(isEnabled = enabled)
     }
 
     fun setServiceRunning(running: Boolean) {

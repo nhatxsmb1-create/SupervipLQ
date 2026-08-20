@@ -42,7 +42,9 @@ fun ArenaCoachTheme(
         SideEffect {
             val window = (view.context as? Activity)?.window
             if (window != null) {
+                @Suppress("DEPRECATION")
                 window.statusBarColor = EsportsDarkBg.toArgb()
+                @Suppress("DEPRECATION")
                 window.navigationBarColor = EsportsDarkBg.toArgb()
                 WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
                 WindowCompat.getInsetsController(window, view).isAppearanceLightNavigationBars = false
