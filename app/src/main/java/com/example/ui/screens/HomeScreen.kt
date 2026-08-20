@@ -146,20 +146,6 @@ fun HomeScreen(
                 scope.launch {
                     snackbarHostState.showSnackbar("Đã dừng dịch vụ Trợ Lý Liên Quân AI.")
                 }
-            },
-            onSimulateClick = {
-                if (!Settings.canDrawOverlays(context)) {
-                    val intent = Intent(
-                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
-                        Uri.parse("package:${context.packageName}")
-                    )
-                    overlayPermissionLauncher.launch(intent)
-                } else {
-                    viewModel.startCoachService(isSimulation = true)
-                    scope.launch {
-                        snackbarHostState.showSnackbar("Đã khởi động chế độ mô phỏng chiến thuật mẫu!")
-                    }
-                }
             }
         )
 
@@ -172,18 +158,6 @@ fun HomeScreen(
                 viewModel.triggerVoiceCallout(phrase)
                 scope.launch {
                     snackbarHostState.showSnackbar("Đang phát giọng nói: \"$phrase\"")
-                }
-            }
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Trình Chọn Kịch Bản Thực Chiến Mẫu
-        EsportsScenarioSelector(
-            onScenarioSelected = { index ->
-                viewModel.selectPresetScenario(index)
-                scope.launch {
-                    snackbarHostState.showSnackbar("Đã nạp tình huống mẫu ${index + 1} lên Radar & HUD nổi!")
                 }
             }
         )

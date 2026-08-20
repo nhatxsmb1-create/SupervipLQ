@@ -97,11 +97,11 @@ class CoachViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun startManualAnalysis() {
-        CoachStateHub.setManualAnalysisStart()
+        // Auto-capture performs analysis continuously
     }
 
     fun stopManualAnalysis() {
-        CoachStateHub.setManualAnalysisStop()
+        CoachStateHub.resetToIdle()
     }
 
     fun triggerVoiceCallout(phrase: String) {

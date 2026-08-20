@@ -301,30 +301,13 @@ class LiveCoachService : Service() {
         analysisLoopJob?.cancel()
         analysisLoopJob = serviceScope.launch {
             while (isActive) {
-                delay(2000L)
-                val currentState = CoachStateHub.tacticalState.value
-
-                if (autoCaptureManager == null || isSimulating) {
-                    val eval = tacticalEngine.evaluate(
-                        currentState = currentState,
-                        matchTimeSeconds = if (currentState.gameDataValid) currentState.matchTimeSeconds + 2 else 0,
-                        goldDiff = currentState.teamGoldDiff,
-                        allyKills = currentState.allyKills,
-                        enemyKills = currentState.enemyKills,
-                        allyTowers = currentState.allyTowers,
-                        enemyTowers = currentState.enemyTowers,
-                        detectedMode = currentState.detectedUIMode,
-                        forceValid = isSimulating || currentState.gameDataValid
-                    )
-
-                    CoachStateHub.updateState(eval.newState)
-
-                    eval.voiceCallout?.let { phrase ->
-                        voiceCoach?.speakCallout(
-                            callout = phrase,
-                            tag = eval.calloutTag,
-                            priority = eval.calloutPriority
-                        )
+                delay(3000L)
+                // Frame capture via observeAutoCapturedFrames handles real-time updates.
+                // If capture is inactive, reset to idle status.
+                if (autoCaptureManager == null) {
+                    val currentState = CoachStateHub.tacticalState.value
+                    if (currentState.coachStatus != com.example.model.CoachStatus.OUTSIDE_MATCH) {
+                        CoachStateHub.resetToIdle()
                     }
                 }
             }

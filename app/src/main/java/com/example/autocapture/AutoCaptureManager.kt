@@ -105,6 +105,7 @@ class AutoCaptureManager(
         val targetInterval = when (screenState) {
             ScreenState.OUTSIDE_GAME -> 4000L
             ScreenState.GAME_MENU, ScreenState.LOADING -> 2500L
+            ScreenState.HERO_SELECTION -> 1000L
             ScreenState.IN_MATCH -> 1000L
             ScreenState.SCOREBOARD_OPEN, ScreenState.SHOP_OPEN -> 400L // High frequency for scoreboard/shop
             ScreenState.COMBAT -> 500L

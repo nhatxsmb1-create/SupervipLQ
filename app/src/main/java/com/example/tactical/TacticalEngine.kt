@@ -27,14 +27,71 @@ class TacticalEngine {
 
         val coachStatus = when {
             gameState.screenState == ScreenState.OUTSIDE_GAME -> CoachStatus.OUTSIDE_MATCH
-            gameState.screenState == ScreenState.GAME_MENU || gameState.screenState == ScreenState.LOADING -> CoachStatus.DETECTING_MATCH
-            gameState.screenState in listOf(ScreenState.IN_MATCH, ScreenState.SCOREBOARD_OPEN, ScreenState.SHOP_OPEN, ScreenState.COMBAT) && confidence < 0.5f -> CoachStatus.IN_MATCH_ANALYZING
+            gameState.screenState == ScreenState.GAME_MENU -> CoachStatus.DETECTING_MATCH
+            gameState.screenState == ScreenState.HERO_SELECTION -> CoachStatus.IN_HERO_SELECTION
+            gameState.screenState == ScreenState.LOADING -> CoachStatus.LOADING_MATCH
+            gameState.screenState in listOf(ScreenState.IN_MATCH, ScreenState.SCOREBOARD_OPEN, ScreenState.SHOP_OPEN, ScreenState.COMBAT) && confidence < 0.35f -> CoachStatus.IN_MATCH_ANALYZING
             gameState.screenState in listOf(ScreenState.IN_MATCH, ScreenState.SCOREBOARD_OPEN, ScreenState.SHOP_OPEN, ScreenState.COMBAT) -> CoachStatus.IN_MATCH_READY
             gameState.screenState == ScreenState.MATCH_END -> CoachStatus.MATCH_ENDED
             else -> CoachStatus.OUTSIDE_MATCH
         }
 
-        // If not in match or low data confidence, return clean idle/waiting state
+        // Handle Hero Selection (Ban-Pick phase)
+        if (coachStatus == CoachStatus.IN_HERO_SELECTION) {
+            val heroState = currentState.copy(
+                coachStatus = coachStatus,
+                gameDetected = true,
+                matchStarted = false,
+                gameDataValid = true,
+                analysisReady = true,
+                matchTimeSeconds = 0,
+                winProbability = null,
+                currentObjective = null,
+                dangerWarning = "Đang Ban-Pick: Ưu tiên cấm chọn tướng khống chế cứng hoặc có khả năng hồi phục mạnh.",
+                dangerLevel = DangerLevel.MEDIUM,
+                teamGoldDiff = 0,
+                teamfightAdvice = "Gợi ý Phép Bổ Trợ: Tốc Biến / Tê Tái. Phù Hiệu: Ma Tính / Ma Mũi Tên.",
+                splitPushAdvice = "Đảm bảo đội hình đủ 5 vị trí: Đỡ Đòn, Đi Rừng, Pháp Sư, Xạ Thủ & Trợ Thủ.",
+                carryTarget = "Giai Đoạn Cấm / Chọn",
+                itemRecommendations = listOf(
+                    ItemRecommendation("Giày Kiên Cường", "Kháng hiệu ứng khống chế", "Khuyến Nghiệu Đội Hình", 700),
+                    ItemRecommendation("Đao Truy Hồn", "Sẵn sàng lên nếu địch có hồi máu mạnh", "Khắc Che", 2000, isCounter = true)
+                )
+            )
+            return TacticalEvaluationResult(
+                newState = heroState,
+                voiceCallout = "Đang giai đoạn cấm chọn tướng. Chú ý phép bổ trợ và ngọc",
+                calloutTag = "hero_selection",
+                calloutPriority = 2
+            )
+        }
+
+        // Handle Loading Screen
+        if (coachStatus == CoachStatus.LOADING_MATCH) {
+            val loadingState = currentState.copy(
+                coachStatus = coachStatus,
+                gameDetected = true,
+                matchStarted = false,
+                gameDataValid = true,
+                analysisReady = true,
+                matchTimeSeconds = 0,
+                winProbability = null,
+                currentObjective = null,
+                dangerWarning = "Đang nạp trận... Sẵn sàng di chuyển mua đồ đầu trận!",
+                dangerLevel = DangerLevel.SAFE,
+                teamfightAdvice = "Mua trang bị khởi đầu (Kiếm/Nhẫn/Rừng) ngay khi xuất hiện ở Tế Đàn.",
+                splitPushAdvice = "Di chuyển ra bụi cỏ bảo vệ bùa rừng cùng đồng đội.",
+                carryTarget = "Đang Nạp Trận..."
+            )
+            return TacticalEvaluationResult(
+                newState = loadingState,
+                voiceCallout = null,
+                calloutTag = "loading",
+                calloutPriority = 1
+            )
+        }
+
+        // If not in active match or low data confidence, return clean idle/waiting state
         if (coachStatus != CoachStatus.IN_MATCH_READY && coachStatus != CoachStatus.IN_MATCH_ANALYZING) {
             val emptyState = currentState.copy(
                 coachStatus = coachStatus,

@@ -93,8 +93,7 @@ import com.example.ui.theme.VictoryGreen
 fun EsportsHeroBanner(
     isServiceRunning: Boolean,
     onLaunchClick: () -> Unit,
-    onStopClick: () -> Unit,
-    onSimulateClick: () -> Unit
+    onStopClick: () -> Unit
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "banner_pulse")
     val glowAlpha by infiniteTransition.animateFloat(
@@ -238,10 +237,9 @@ fun EsportsHeroBanner(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // 2 Nút Hành Động Esports
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            // Nút Hành Động Esports Tự Động
+            Box(
+                modifier = Modifier.fillMaxWidth()
             ) {
                 if (!isServiceRunning) {
                     Button(
@@ -252,8 +250,8 @@ fun EsportsHeroBanner(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
-                            .weight(1f)
-                            .height(44.dp)
+                            .fillMaxWidth()
+                            .height(48.dp)
                             .background(GoldGlowGradient, RoundedCornerShape(12.dp))
                             .shadow(8.dp, RoundedCornerShape(12.dp), spotColor = ImperialGold)
                             .testTag("launch_coach_overlay_button")
@@ -263,13 +261,13 @@ fun EsportsHeroBanner(
                                 imageVector = Icons.Default.PlayArrow,
                                 contentDescription = "Mở",
                                 tint = Color(0xFF261900),
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "BẬT CỬA SỔ NỔI",
+                                text = "BẬT CỬA SỔ NỔI TỰ ĐỘNG",
                                 fontWeight = FontWeight.Black,
-                                fontSize = 12.sp,
+                                fontSize = 13.sp,
                                 color = Color(0xFF261900),
                                 letterSpacing = 0.5.sp
                             )
@@ -284,8 +282,8 @@ fun EsportsHeroBanner(
                         contentPadding = androidx.compose.foundation.layout.PaddingValues(),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
-                            .weight(1f)
-                            .height(44.dp)
+                            .fillMaxWidth()
+                            .height(48.dp)
                             .background(DangerGlowGradient, RoundedCornerShape(12.dp))
                             .shadow(8.dp, RoundedCornerShape(12.dp), spotColor = DefeatRed)
                             .testTag("stop_coach_overlay_button")
@@ -295,48 +293,18 @@ fun EsportsHeroBanner(
                                 imageVector = Icons.Default.Stop,
                                 contentDescription = "Dừng",
                                 tint = Color.White,
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(20.dp)
                             )
-                            Spacer(modifier = Modifier.width(6.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "DỪNG TRỢ LÝ",
+                                text = "DỪNG TRỢ LÝ LIÊN QUÂN",
                                 fontWeight = FontWeight.Black,
-                                fontSize = 12.sp,
+                                fontSize = 13.sp,
                                 color = Color.White,
                                 letterSpacing = 0.5.sp
                             )
                         }
                     }
-                }
-
-                OutlinedButton(
-                    onClick = onSimulateClick,
-                    shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = ArcaneCyan,
-                        containerColor = Color(0x3300F0FF)
-                    ),
-                    border = ButtonDefaults.outlinedButtonBorder(enabled = true).copy(
-                        brush = Brush.horizontalGradient(listOf(ArcaneCyan, Color(0xFF0066CC)))
-                    ),
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(44.dp)
-                        .testTag("simulate_battle_button")
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.CrisisAlert,
-                        contentDescription = "Mô phỏng",
-                        tint = ArcaneCyan,
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "MÔ PHỎNG TRẬN",
-                        fontWeight = FontWeight.ExtraBold,
-                        fontSize = 11.sp,
-                        letterSpacing = 0.5.sp
-                    )
                 }
             }
         }

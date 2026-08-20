@@ -3,6 +3,8 @@ package com.example.model
 enum class CoachStatus(val displayName: String, val detailText: String) {
     OUTSIDE_MATCH("TRỢ LÝ SẴN SÀNG", "Chưa phát hiện trận đấu. Vào Liên Quân để bắt đầu phân tích"),
     DETECTING_MATCH("ĐANG NHẬN DIỆN TRẬN", "Đang quét màn hình Liên Quân..."),
+    IN_HERO_SELECTION("ĐANG CHỌN TƯỚNG (BAN-PICK)", "Đang phân tích đội hình & gợi ý chọn tướng/phép bổ trợ"),
+    LOADING_MATCH("ĐANG TẢI TRẬN ĐẤU", "Chuẩn bị vào trận... Sẵn sàng di chuyển"),
     IN_MATCH_ANALYZING("ĐANG THU THẬP DỮ LIỆU", "Đang phân tích chỉ số trận đấu..."),
     IN_MATCH_READY("ĐANG PHÂN TÍCH TRỰC TIẾP", "Đang phân tích chiến thuật thực chiến"),
     MATCH_ENDED("TRẬN ĐẤU KẾT THÚC", "Trận đấu đã hoàn thành")

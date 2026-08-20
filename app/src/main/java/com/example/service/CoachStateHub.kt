@@ -65,30 +65,7 @@ object CoachStateHub {
         _tacticalState.value = current.copy(isVoiceMuted = muted)
     }
 
-    fun setManualAnalysisStart() {
-        val current = _tacticalState.value
-        _tacticalState.value = current.copy(
-            coachStatus = CoachStatus.IN_MATCH_READY,
-            gameDetected = true,
-            matchStarted = true,
-            gameDataValid = true,
-            analysisReady = true,
-            matchTimeSeconds = 120,
-            winProbability = 50,
-            currentObjective = ObjectiveTarget.SPIRIT_SENTINEL,
-            dangerWarning = "Đang phân tích trực tiếp màn hình trận đấu",
-            dangerLevel = DangerLevel.SAFE,
-            teamfightAdvice = "Bắt đầu giao tranh theo hướng dẫn trợ lý",
-            splitPushAdvice = "Đẩy lính các đường",
-            carryTarget = "Xạ Thủ / Pháp Sư Địch",
-            itemRecommendations = listOf(
-                ItemRecommendation("Đao Truy Hồn", "Khắc chế hồi máu", "Lên Đồ Khắc Chế", 2000, isCounter = true),
-                ItemRecommendation("Huân Chương Troy", "Kháng sát thương phép", "Lên Đồ Khắc Chế", 2220, isCounter = true)
-            )
-        )
-    }
-
-    fun setManualAnalysisStop() {
+    fun resetToIdle() {
         val current = _tacticalState.value
         _tacticalState.value = current.copy(
             coachStatus = CoachStatus.OUTSIDE_MATCH,
@@ -99,7 +76,7 @@ object CoachStateHub {
             matchTimeSeconds = 0,
             winProbability = null,
             currentObjective = null,
-            dangerWarning = "",
+            dangerWarning = "Mở Liên Quân để trợ lý tự động phát hiện trận đấu...",
             dangerLevel = DangerLevel.SAFE,
             teamGoldDiff = 0,
             allyKills = 0,

@@ -28,8 +28,20 @@ class ScreenStateDetector {
             return ScreenState.SHOP_OPEN
         }
 
-        // Check OCR text hints for game screen or match timer pattern
+        // Check OCR text hints for game screen, hero selection ban-pick, or match timer pattern
         val hasTimerPattern = ocrText.contains(Regex("(\\d{1,2})[:.](\\d{2})"))
+        val hasHeroSelectionText = ocrText.contains("Chọn tướng", ignoreCase = true) ||
+                ocrText.contains("Khóa", ignoreCase = true) ||
+                ocrText.contains("Cấm", ignoreCase = true) ||
+                ocrText.contains("Ban", ignoreCase = true) ||
+                ocrText.contains("Pick", ignoreCase = true) ||
+                ocrText.contains("Đội Xanh", ignoreCase = true) ||
+                ocrText.contains("Đội Đỏ", ignoreCase = true) ||
+                ocrText.contains("Trợ thủ", ignoreCase = true) ||
+                ocrText.contains("Phép bổ trợ", ignoreCase = true) ||
+                ocrText.contains("Trang phục", ignoreCase = true) ||
+                ocrText.contains("Ngọc bổ trợ", ignoreCase = true)
+
         val hasInGameKeywords = ocrText.contains("vs", ignoreCase = true) ||
                 ocrText.contains("k", ignoreCase = true) ||
                 ocrText.contains("Vàng", ignoreCase = true) ||
@@ -38,13 +50,17 @@ class ScreenStateDetector {
                 ocrText.contains("Trụ", ignoreCase = true) ||
                 ocrText.contains("Chiến", ignoreCase = true)
 
+        if (hasHeroSelectionText && !hasTimerPattern && !hasInGameKeywords) {
+            return ScreenState.HERO_SELECTION
+        }
+
         val hasLobbyText = ocrText.contains("Đấu Luyện", ignoreCase = true) ||
                 ocrText.contains("Đấu Hạng", ignoreCase = true) ||
                 ocrText.contains("Bắt Đầu", ignoreCase = true) ||
                 ocrText.contains("Sảnh", ignoreCase = true) ||
                 ocrText.contains("Lobby", ignoreCase = true)
 
-        if (hasLobbyText && !hasTimerPattern && !hasInGameKeywords) {
+        if (hasLobbyText && !hasTimerPattern && !hasInGameKeywords && !hasHeroSelectionText) {
             return ScreenState.GAME_MENU
         }
 

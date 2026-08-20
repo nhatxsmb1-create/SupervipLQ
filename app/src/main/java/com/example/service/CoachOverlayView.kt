@@ -235,7 +235,7 @@ fun CoachOverlayScreen(
                         .padding(top = 6.dp)
                 ) {
                     if (tacticalState.coachStatus != CoachStatus.IN_MATCH_READY) {
-                        // Hiển thị Card Trạng Thái Chờ Trận Đấu
+                        // Hiển thị Card Trạng Thái Tự Động (Chọn Tướng / Loading / Chờ Trận)
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -254,33 +254,20 @@ fun CoachOverlayScreen(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = tacticalState.coachStatus.detailText,
+                                    text = tacticalState.dangerWarning.ifBlank { tacticalState.coachStatus.detailText },
                                     fontSize = 11.sp,
                                     color = Color.White,
                                     fontWeight = FontWeight.Medium,
                                     lineHeight = 15.sp
                                 )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(ArcaneCyan)
-                                        .clickable { CoachStateHub.setManualAnalysisStart() }
-                                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.FlashOn,
-                                        contentDescription = "Bắt đầu",
-                                        tint = Color.Black,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                if (tacticalState.teamfightAdvice.isNotBlank()) {
+                                    Spacer(modifier = Modifier.height(6.dp))
                                     Text(
-                                        text = "BẮT ĐẦU PHÂN TÍCH",
+                                        text = tacticalState.teamfightAdvice,
                                         fontSize = 10.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = Color.Black
+                                        color = ArcaneCyan,
+                                        fontWeight = FontWeight.Bold,
+                                        lineHeight = 14.sp
                                     )
                                 }
                             }

@@ -6,6 +6,7 @@ enum class ScreenState(
 ) {
     OUTSIDE_GAME("TRỢ LÝ SẴN SÀNG", "Chưa phát hiện trận đấu. Vào Liên Quân để bắt đầu phân tích"),
     GAME_MENU("ĐANG Ở MENU GAME", "Đang ở sảnh/menu Liên Quân"),
+    HERO_SELECTION("ĐANG CHỌN TƯỚNG (BAN-PICK)", "Đang phân tích đội hình 2 bên & gợi ý chọn tướng/phép bổ trợ"),
     LOADING("ĐANG TẢI TRẬN ĐẤU", "Đang chờ tải trận đấu vào game..."),
     IN_MATCH("ĐANG PHÂN TÍCH TRỰC TIẾP", "Đang phân tích chiến thuật thực chiến thời gian thực"),
     SCOREBOARD_OPEN("BẢNG ĐIỂM ĐANG MỞ", "Đang phân tích chỉ số vàng, KDA và trang bị toàn đội"),

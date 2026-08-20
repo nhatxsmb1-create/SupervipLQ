@@ -150,11 +150,24 @@ class VisionAnalysisEngine : IVisionEngine {
                 ScreenState.COMBAT
             )
 
+            // Dynamic time calculation: sync with OCR if parsed, or tick continuously when active
+            val cachedTime = cachedGameState.matchTimeSeconds ?: 0
+            val finalTimeSec = when {
+                parsedTimeSec != null -> parsedTimeSec
+                isMatchActive && cachedTime > 0 -> {
+                    val elapsedSec = (captureIntervalMs / 1000L).toInt().coerceAtLeast(1)
+                    cachedTime + elapsedSec
+                }
+                isMatchActive -> 1
+                else -> 0
+            }
+
             val confidence = when {
-                parsedTimeSec != null -> 0.92f
-                isMatchActive -> 0.75f
+                parsedTimeSec != null -> 0.95f
+                isMatchActive -> 0.85f
+                screenState == ScreenState.HERO_SELECTION -> 0.90f
                 screenState == ScreenState.GAME_MENU -> 0.80f
-                else -> 0.40f
+                else -> 0.50f
             }
 
             val processingTime = System.currentTimeMillis() - startTime
@@ -162,7 +175,7 @@ class VisionAnalysisEngine : IVisionEngine {
             val newGameState = GameState(
                 matchActive = isMatchActive,
                 screenState = screenState,
-                matchTimeSeconds = parsedTimeSec ?: cachedGameState.matchTimeSeconds,
+                matchTimeSeconds = finalTimeSec,
                 allyKills = parsedAllyKills ?: cachedGameState.allyKills,
                 enemyKills = parsedEnemyKills ?: cachedGameState.enemyKills,
                 goldDifference = parsedGoldDiff ?: cachedGameState.goldDifference,
@@ -173,7 +186,7 @@ class VisionAnalysisEngine : IVisionEngine {
                 captureIntervalMs = captureIntervalMs,
                 frameChangedPercent = changeResult.differencePercent,
                 detectedComponents = detectedComponents,
-                rawOcrSummary = ocrText.take(120).replace("\n", " ")
+                rawOcrSummary = ocrText.take(150).replace("\n", " ")
             )
 
             cachedGameState = newGameState
