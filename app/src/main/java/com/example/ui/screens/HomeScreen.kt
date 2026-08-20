@@ -137,6 +137,59 @@ fun HomeScreen(
             .padding(16.dp)
             .testTag("home_screen_root")
     ) {
+        // Huy Hiệu Phiên Bản Mới V2.0 & Hướng Dẫn Nổi Bật
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(
+                    androidx.compose.ui.graphics.Brush.horizontalGradient(
+                        listOf(Color(0xFF132F4C), Color(0xFF0A1929))
+                    )
+                )
+                .border(1.5.dp, ImperialGold, RoundedCornerShape(16.dp))
+                .padding(14.dp)
+        ) {
+            Column {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = "⚡ PHIÊN BẢN MỚI V2.0 - LIVE COACH",
+                        color = ImperialGold,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 0.5.sp
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(SuccessGreen.copy(alpha = 0.2f))
+                            .border(1.dp, SuccessGreen, RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "ONLINE",
+                            color = SuccessGreen,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "• 🔍 Kính lúp HUD: Chụp & Phân tích màn hình game tức thì.\n• 🔄 Reset HUD: Đặt lại đồng hồ 00:00 cho trận đấu mới.\n• 🐉 Phím tắt: Lên đồ Khắc Chế, Cảnh báo Gank, Ăn Rồng 02:00.",
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    lineHeight = 16.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
         // Banner Hero Esports AAA
         EsportsHeroBanner(
             isServiceRunning = isServiceRunning,
