@@ -17,7 +17,7 @@ object ItemDatabase {
             cost = 2000,
             stats = "+100 Công vật lý, +10% Giảm hồi chiêu",
             passiveDesc = "Truy Hồn: Sát thương vật lý làm giảm 50% khả năng hồi máu của mục tiêu trong 1.5s.",
-            counterPurpose = "Khắc chế cứng các tướng hồi phục mạnh như Florentino, Veres, Lữ Bố, Taara."
+            counterPurpose = "Khắc chế cứng các tướng hồi phục mạnh như Biron, Helen, Florentino, Veres, Taara."
         ),
         GameItem(
             name = "Sách Truy Hồn",
@@ -25,7 +25,39 @@ object ItemDatabase {
             cost = 2000,
             stats = "+200 Công phép, +10% Giảm hồi chiêu, +20 Hồi năng lượng/5s",
             passiveDesc = "Truy Hồn: Sát thương phép làm giảm 50% khả năng hồi máu của mục tiêu trong 1.5s.",
-            counterPurpose = "Trang bị bắt buộc cho Pháp Sư (Mid) khi đội hình địch có tướng hút máu cao hoặc Helen, Sephera."
+            counterPurpose = "Trang bị bắt buộc cho Pháp Sư (Mid) khi đội hình địch có Helen, Biron, Sephera hoặc tướng hút máu cao."
+        ),
+        GameItem(
+            name = "Quả Cầu Băng Sương",
+            category = "Phép",
+            cost = 2000,
+            stats = "+240 Công phép",
+            passiveDesc = "Chủ Động - Phong Ấn: Trở nên bất tử và không thể bị chọn làm mục tiêu trong 1.5s, nhưng không thể di chuyển.",
+            counterPurpose = "Cực kỳ quan trọng cho Pháp Sư / Sát Thủ né sốc sát thương hoặc né chiêu cuối dồn dame."
+        ),
+        GameItem(
+            name = "Cung Tà Ma",
+            category = "Công",
+            cost = 2250,
+            stats = "+100 Công vật lý, +15% Tỉ lệ chí mạng, +10% Hút máu",
+            passiveDesc = "Chủ Động - Tà Ma: Tăng thêm 90% Hút máu trong 3s (dành riêng cho tướng đánh xa/Xạ Thủ).",
+            counterPurpose = "Trang bị lật kèo sinh tử giúp Xạ Thủ (Capheny, Violet, Laville, Stuart) hồi đầy máu tức thì trong combat."
+        ),
+        GameItem(
+            name = "Phụ Kiện Ma Nhãn",
+            category = "Trợ Thủ",
+            cost = 1400,
+            stats = "+40 Giáp / Giáp Phép, +10% Giảm hồi chiêu, +500 Máu",
+            passiveDesc = "Chủ Động - Ma Nhãn: Soi diện rộng xung quanh và phát hiện tàng hình / ẩn nấp bụi cỏ trong 5s.",
+            counterPurpose = "Trợ Thủ bắt buộc phải lên khi đối phương có Kaine, Aoi, Elsu hoặc Ngộ Không tàng hình."
+        ),
+        GameItem(
+            name = "Liềm Đoạt Mệnh",
+            category = "Công",
+            cost = 2000,
+            stats = "+60 Công vật lý, +5% Giảm hồi chiêu",
+            passiveDesc = "Bất Tử: Khi chịu sát thương chí tử sẽ miễn tử vong và tăng 20% tốc chạy trong 1s (cooldown 90s).",
+            counterPurpose = "Trang bị sinh tồn số 1 cho Sát Thủ / Xạ Thủ tránh bị hạ gục bất ngờ."
         ),
         GameItem(
             name = "Huân Chương Troy",
@@ -33,7 +65,7 @@ object ItemDatabase {
             cost = 2220,
             stats = "+360 Giáp phép, +1000 Máu tối đa, +10% Giảm hồi chiêu",
             passiveDesc = "Hộ Thân: Nhận một lớp lá chắn hấp thụ từ 300-1050 sát thương phép mỗi 18s.",
-            counterPurpose = "Kháng sốc sát thương phép từ Pháp Sư sốc điện như Tulen, Liliana, Veera, Natalya."
+            counterPurpose = "Kháng sốc sát thương phép từ Pháp Sư sốc điện / cấu rỉa như Yue, Liliana, Krixi, Tulen."
         ),
         GameItem(
             name = "Khiên Huyền Thoại",
@@ -50,30 +82,7 @@ object ItemDatabase {
             stats = "+120 Giáp vật lý",
             passiveDesc = "Phục Sinh: Hồi sinh tại chỗ sau 2s với 2000 máu (tối đa 2 lần mỗi trận).",
             counterPurpose = "Trang bị tình huống then chốt cho giao tranh tổng quyết định hoặc thủ nhà chính cuối trận."
-        ),
-        GameItem(
-            name = "Kiếm Muramasa",
-            category = "Công",
-            cost = 2020,
-            stats = "+75 Công vật lý, +10% Giảm hồi chiêu",
-            passiveDesc = "Phá Giáp: Nhận thêm +40% Xuyên giáp vật lý.",
-            counterPurpose = "Xuyên thủng dàn Đỡ Đòn và Đấu Sĩ nhiều giáp (Thane, Mina, Toro, Baldum)."
-        ),
-        GameItem(
-            name = "Nham Thuẫn",
-            category = "Thủ",
-            cost = 1980,
-            stats = "+180 Giáp vật lý, +180 Giáp phép, +1200 Máu",
-            passiveDesc = "Chủ Động: Kích hoạt nhận lá chắn tương đương 30% máu tối đa + 10% máu đã mất trong 3s.",
-            counterPurpose = "Giúp Đỡ Đòn và Đấu Sĩ lật ngược thế cờ khi bị dồn sát thương hội đồng."
-        ),
-        GameItem(
-            name = "Thánh Kiếm",
-            category = "Công",
-            cost = 2000,
-            stats = "+100 Công vật lý, +25% Tỉ lệ chí mạng",
-            passiveDesc = "Cuồng Bạo: Tăng thêm 50% Sát thương chí mạng.",
-            counterPurpose = "Trang bị trấn phái giúp Xạ Thủ (Violet, Elsu, Yorn, Laville) bùng nổ sát thương."
         )
     )
 }
+

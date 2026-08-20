@@ -126,23 +126,23 @@ class TacticalEngine {
         val allyKills = gameState.allyKills ?: 0
         val enemyKills = gameState.enemyKills ?: 0
 
-        // Objective target selection based on game state
+        // Objective target selection based on latest Arena of Valor Meta
         val objective = when {
-            matchTimeSeconds >= 900 && goldDiff >= 0 -> ObjectiveTarget.ENRAGED_CAESAR
+            matchTimeSeconds >= 900 && goldDiff >= 0 -> ObjectiveTarget.ENRAGED_CAESAR // 15:00+ Caesar Bạo Chúa Cấp 3
             matchTimeSeconds >= 900 && goldDiff < -5000 -> ObjectiveTarget.HIGH_GROUND_DEFENSE
-            matchTimeSeconds in 480 until 900 && goldDiff >= 1000 -> ObjectiveTarget.DARK_SLAYER
-            matchTimeSeconds in 120 until 480 && goldDiff >= -1500 -> ObjectiveTarget.ABYSSAL_DRAGON
-            matchTimeSeconds in 70 until 120 -> ObjectiveTarget.SPIRIT_SENTINEL
+            matchTimeSeconds in 480 until 900 && goldDiff >= 1000 -> ObjectiveTarget.DARK_SLAYER // 08:00+ Caesar Hắc Ám Cấp 2
+            matchTimeSeconds in 120 until 480 && goldDiff >= -1500 -> ObjectiveTarget.ABYSSAL_DRAGON // 02:00+ Rồng Ánh Sáng
+            matchTimeSeconds in 70 until 120 -> ObjectiveTarget.SPIRIT_SENTINEL // Dơi Thủ Vệ
             goldDiff <= -6000 -> ObjectiveTarget.HIGH_GROUND_DEFENSE
             goldDiff >= 4000 -> ObjectiveTarget.MID_TOWER
             else -> ObjectiveTarget.FARM_SAFE
         }
 
-        // Confidence-aware phrasing (Requirement 12)
+        // Confidence-aware phrasing
         val isLowConfidence = confidence < 0.70f
         val prefix = if (isLowConfidence) "Có khả năng " else ""
 
-        var dangerWarning = "${prefix}An toàn, giữ nhịp farm"
+        var dangerWarning = "${prefix}An toàn, duy trì nhịp farm & tích Vàng"
         var dangerLevel = DangerLevel.SAFE
         var voiceCallout: String? = null
         var calloutTag = "none"
@@ -150,59 +150,73 @@ class TacticalEngine {
 
         when {
             goldDiff <= -5000 -> {
-                dangerWarning = "${prefix}đang thua ${kotlin.math.abs(goldDiff)} Vàng! Tránh giao tranh 5v5 trực diện."
+                dangerWarning = "${prefix}đang thua ${kotlin.math.abs(goldDiff)} Vàng! Né giao tranh 5v5, dọn lính sát Trụ."
                 dangerLevel = DangerLevel.CRITICAL
-                voiceCallout = "Tránh giao tranh - Đang thua tiền"
+                voiceCallout = "Tránh giao tranh - Đang thua tiền sâu"
                 calloutTag = "danger_gold"
                 calloutPriority = 3
             }
-            matchTimeSeconds in 75..110 -> {
-                dangerWarning = "${prefix}rừng địch đạt Cấp 4 — Cảnh giác bị gank tại bụi cỏ Sông!"
+            matchTimeSeconds in 80..115 -> {
+                dangerWarning = "${prefix}Rừng địch hoàn thành vòng Rừng 1 (Cấp 4)! Chú ý gank tại bụi Sông!"
                 dangerLevel = DangerLevel.HIGH
-                voiceCallout = "Kẻ địch biến mất ở Sông"
+                voiceCallout = "Cảnh giác gank - Rừng địch đã Cấp 4"
                 calloutTag = "danger_gank_early"
                 calloutPriority = 2
             }
+            matchTimeSeconds in 230..255 -> {
+                dangerWarning = "${prefix}Mốc 4 phút: Mất khiên bảo vệ Trụ ngoài! Tập trung bảo vệ hoặc ép Trụ Đường Giữa!"
+                dangerLevel = DangerLevel.MEDIUM
+                voiceCallout = "Chú ý ép Trụ - Hết khiên Trụ 4 phút"
+                calloutTag = "tower_shield_expired"
+                calloutPriority = 2
+            }
             gameState.screenState == ScreenState.COMBAT && goldDiff < -2000 -> {
-                dangerWarning = "Giao tranh thế bất lợi! Rút lui giữ mạng bảo vệ Trụ."
+                dangerWarning = "Giao tranh bất lợi! Lùi về giữ mạng bảo vệ Trụ!"
                 dangerLevel = DangerLevel.HIGH
                 voiceCallout = "Rút lui ngay"
                 calloutTag = "combat_disadvantage"
                 calloutPriority = 3
             }
-            goldDiff >= 4500 && matchTimeSeconds in 480..900 -> {
-                dangerWarning = "${prefix}đội đang dẫn trước ${goldDiff} Vàng. Ưu tiên kiểm soát Rồng & Caesar!"
+            goldDiff >= 4000 && matchTimeSeconds >= 480 -> {
+                dangerWarning = "${prefix}đang dẫn trước ${goldDiff} Vàng. Kiểm soát Bùa Caesar Hắc Ám ép đường!"
                 dangerLevel = DangerLevel.SAFE
-                voiceCallout = "Ăn Tà Thần Caesar"
+                voiceCallout = "Ăn Caesar Hắc Ám ép đường"
                 calloutTag = "objective_slayer"
                 calloutPriority = 2
             }
             matchTimeSeconds in 120..150 -> {
-                dangerWarning = "${prefix}Rồng Ánh Sáng đã xuất hiện. Kiểm soát bụi cỏ lấy tầm nhìn."
+                dangerWarning = "${prefix}Rồng Ánh Sáng (2:00) xuất hiện. Kiểm soát bụi lấy tầm nhìn ăn Rồng."
                 dangerLevel = DangerLevel.MEDIUM
-                voiceCallout = "Ăn Rồng Ánh Sáng"
+                voiceCallout = "Tập trung ăn Rồng Ánh Sáng"
                 calloutTag = "objective_dragon"
                 calloutPriority = 2
             }
+            matchTimeSeconds in 890..930 -> {
+                dangerWarning = "Mốc 15 phút: Caesar Bạo Chúa xuất hiện! Mục tiêu sinh tử quyết định trận đấu!"
+                dangerLevel = DangerLevel.HIGH
+                voiceCallout = "Tập trung kiểm soát Caesar Bạo Chúa"
+                calloutTag = "objective_enraged_slayer"
+                calloutPriority = 3
+            }
         }
 
-        // Tactical advice
+        // Tactical advice according to Meta
         val teamfightAdvice = when {
-            goldDiff <= -4000 -> "Tránh giao tranh. Đội đang thiếu tiền, nhường rừng ngoài và dọn lính trong Trụ."
-            goldDiff in -3999..2000 -> "Giao tranh cân bằng: Chờ Đỡ Đòn mở combat trước, Sát Thủ vòng sau bắt Xạ Thủ."
-            else -> "Đang dẫn vàng, không cần mạo hiểm. Tập trung 5 người ép Trụ Đường Giữa."
+            goldDiff <= -4000 -> "Tránh giao tranh 5v5. Nhường rừng ngoài, Pháp Sư & Xạ Thủ dọn sóng lính trong Trụ."
+            goldDiff in -3999..2000 -> "Giao tranh cân bằng: Trợ Thủ mở combat / bọc lót, Sát Thủ chờ bắt Xạ Thủ / Pháp Sư địch."
+            else -> "Đang dẫn Vàng: Trợ Thủ / Đỡ Đòn kiểm soát tàn bạo tầm nhìn Rừng địch, ép Trụ Đường Giữa."
         }
 
         val splitPushAdvice = when {
-            goldDiff <= -3000 -> "Đấu Sĩ đẩy lẻ đường xa nhất để kéo giãn đội hình đối phương."
-            goldDiff >= 4000 -> "Đẩy đều 3 đường lính cao cùng lúc để tạo áp lực."
-            else -> "Giữ lính qua nửa sông trước khi di chuyển hỗ trợ giao tranh rồng."
+            goldDiff <= -3000 -> "Đấu Sĩ cơ động (Biron / Florentino) đẩy lẻ đường xa để kéo giãn đội hình địch."
+            goldDiff >= 4000 -> "Đẩy đồng loạt 3 đường lính cao cùng lúc, không để đối phương thủ Trụ dễ dàng."
+            else -> "Giữ lính qua nửa sông trước khi di chuyển hỗ trợ ăn Rồng hoặc Caesar."
         }
 
         val itemRecommendations = listOf(
-            ItemRecommendation("Đao Truy Hồn", "Khắc chế hồi máu", "Lên Đồ Khắc Chế", 2000, isCounter = true),
-            ItemRecommendation("Huân Chương Troy", "Kháng sốc sát thương phép", "Lên Đồ Khắc Chế", 2220, isCounter = true),
-            ItemRecommendation("Thương Longinus", "Xuyên giáp và giảm hồi chiêu", "Trang Bị Cốt Lõi", 2060)
+            ItemRecommendation("Đao Truy Hồn / Sách Truy Hồn", "BẮT BỘC nếu địch có Helen, Biron, Florentino", "Khắc Che", 2000, isCounter = true),
+            ItemRecommendation("Phụ Kiện Ma Nhãn", "Soi tàng hình Kaine / Aoi / Elsu", "Trợ Thủ Meta", 1400, isCounter = true),
+            ItemRecommendation("Quả Cầu Băng Sương / Liềm Đoạt Mệnh", "Né sốc sát thương late game", "Sinh Tồn", 2000)
         )
 
         val newState = currentState.copy(
