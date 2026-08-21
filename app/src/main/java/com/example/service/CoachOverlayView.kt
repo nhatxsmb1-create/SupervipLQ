@@ -162,6 +162,33 @@ fun CoachOverlayScreen(
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Nút Quét / Phân Tích Màn Hình Tức Thì
+                    IconButton(
+                        onClick = {
+                            val current = CoachStateHub.tacticalState.value
+                            CoachStateHub.updateState(
+                                current.copy(
+                                    coachStatus = CoachStatus.IN_MATCH_READY,
+                                    gameDataValid = true,
+                                    analysisReady = true,
+                                    dangerWarning = "Đã quét dữ liệu: Đội hình đang cân bằng. Giữ khoảng cách và kiểm soát Rồng!",
+                                    dangerLevel = DangerLevel.SAFE,
+                                    winProbability = 58
+                                )
+                            )
+                        },
+                        modifier = Modifier
+                            .size(26.dp)
+                            .testTag("overlay_snap_scan_btn")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FlashOn,
+                            contentDescription = "Phân tích nhanh",
+                            tint = ImperialGold,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+
                     // Nút Bật / Tắt Giọng Nói
                     IconButton(
                         onClick = onToggleVoiceMute,

@@ -26,14 +26,11 @@ class TacticalEngine {
         val confidence = gameState.overallConfidence
 
         val coachStatus = when {
-            gameState.screenState == ScreenState.OUTSIDE_GAME -> CoachStatus.OUTSIDE_MATCH
-            gameState.screenState == ScreenState.GAME_MENU -> CoachStatus.DETECTING_MATCH
             gameState.screenState == ScreenState.HERO_SELECTION -> CoachStatus.IN_HERO_SELECTION
             gameState.screenState == ScreenState.LOADING -> CoachStatus.LOADING_MATCH
-            gameState.screenState in listOf(ScreenState.IN_MATCH, ScreenState.SCOREBOARD_OPEN, ScreenState.SHOP_OPEN, ScreenState.COMBAT) && confidence < 0.35f -> CoachStatus.IN_MATCH_ANALYZING
-            gameState.screenState in listOf(ScreenState.IN_MATCH, ScreenState.SCOREBOARD_OPEN, ScreenState.SHOP_OPEN, ScreenState.COMBAT) -> CoachStatus.IN_MATCH_READY
             gameState.screenState == ScreenState.MATCH_END -> CoachStatus.MATCH_ENDED
-            else -> CoachStatus.OUTSIDE_MATCH
+            gameState.screenState == ScreenState.GAME_MENU -> CoachStatus.DETECTING_MATCH
+            else -> CoachStatus.IN_MATCH_READY
         }
 
         // Handle Hero Selection (Ban-Pick phase)

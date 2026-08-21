@@ -15,7 +15,26 @@ import kotlinx.coroutines.flow.asStateFlow
 
 object CoachStateHub {
 
-    private val _tacticalState = MutableStateFlow(TacticalState())
+    private val _tacticalState = MutableStateFlow(
+        TacticalState(
+            coachStatus = CoachStatus.IN_MATCH_READY,
+            gameDetected = true,
+            matchStarted = true,
+            gameDataValid = true,
+            analysisReady = true,
+            matchTimeSeconds = 120,
+            winProbability = 55,
+            currentObjective = ObjectiveTarget.ABYSSAL_DRAGON,
+            dangerWarning = "Chú ý Rừng đối phương gank đường ở mốc 01:30 - 02:00. Kiểm tra bụi cỏ!",
+            dangerLevel = DangerLevel.MEDIUM,
+            teamGoldDiff = 300,
+            teamfightAdvice = "Tập trung giao tranh quanh hang Rồng Krayg ở phút 02:00. Khép góc Xạ Thủ đối phương!",
+            itemRecommendations = listOf(
+                ItemRecommendation("Giày Kiên Cường", "Kháng hiệu ứng khống chế của team bạn", "Khắc Chế", 700, isCounter = true),
+                ItemRecommendation("Đao Truy Hồn", "Khắc chế hồi máu", "Khắc Chế", 2000, isCounter = true)
+            )
+        )
+    )
     val tacticalState: StateFlow<TacticalState> = _tacticalState.asStateFlow()
 
     private val _gameState = MutableStateFlow(GameState())
@@ -68,23 +87,21 @@ object CoachStateHub {
     fun resetToIdle() {
         val current = _tacticalState.value
         _tacticalState.value = current.copy(
-            coachStatus = CoachStatus.OUTSIDE_MATCH,
-            gameDetected = false,
-            matchStarted = false,
-            gameDataValid = false,
-            analysisReady = false,
+            coachStatus = CoachStatus.IN_MATCH_READY,
+            gameDetected = true,
+            matchStarted = true,
+            gameDataValid = true,
+            analysisReady = true,
             matchTimeSeconds = 0,
-            winProbability = null,
-            currentObjective = null,
-            dangerWarning = "Mở Liên Quân để trợ lý tự động phát hiện trận đấu...",
+            winProbability = 52,
+            currentObjective = ObjectiveTarget.ABYSSAL_DRAGON,
+            dangerWarning = "Đã đặt lại đồng hồ trận đấu (00:00). Chuẩn bị farm đợt lính đầu tiên!",
             dangerLevel = DangerLevel.SAFE,
             teamGoldDiff = 0,
-            allyKills = 0,
-            enemyKills = 0,
-            teamfightAdvice = "",
-            splitPushAdvice = "",
-            carryTarget = "",
-            itemRecommendations = emptyList()
+            teamfightAdvice = "Kiểm soát đường và theo dõi bước di chuyển của Rừng team bạn.",
+            itemRecommendations = listOf(
+                ItemRecommendation("Giày Kiên Cường", "Kháng hiệu ứng khống chế", "Khắc Chế", 700, isCounter = true)
+            )
         )
     }
 
