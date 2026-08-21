@@ -346,17 +346,40 @@ fun CoachOverlayScreen(
 
                         Spacer(modifier = Modifier.height(6.dp))
 
-                        // 2. Thẻ Chiến Thuật Trọng Tâm (Mục tiêu + Cảnh báo kết hợp)
+                        // 2. Thẻ Chiến Thuật Trọng Tâm (Mục tiêu + Cảnh báo + Scoreboard/Shop kết hợp)
+                        val isScoreboard = tacticalState.detectedUIMode == com.example.model.DetectedScreenMode.SCOREBOARD_OPEN
+                        val isShop = tacticalState.detectedUIMode == com.example.model.DetectedScreenMode.SHOP_OPEN
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(8.dp))
-                                .background(Color(0xFF0D1B33))
-                                .border(1.dp, dangerColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                .background(if (isScoreboard) Color(0xFF132238) else if (isShop) Color(0xFF241C10) else Color(0xFF0D1B33))
+                                .border(1.dp, if (isScoreboard) ArcaneCyan else if (isShop) ImperialGold else dangerColor.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
                                 .padding(6.dp)
                         ) {
                             Column {
-                                if (tacticalState.currentObjective != null) {
+                                if (isScoreboard) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "📊 PHÂN TÍCH ĐỘI HÌNH ĐỊCH",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = ArcaneCyan
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                } else if (isShop) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(
+                                            text = "🛒 PHÂN TÍCH KHO ĐỒ & MUA SẮM",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = ImperialGold
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                } else if (tacticalState.currentObjective != null) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
                                             imageVector = Icons.Default.Security,
@@ -380,7 +403,7 @@ fun CoachOverlayScreen(
                                     Icon(
                                         imageVector = Icons.Default.Warning,
                                         contentDescription = "Cảnh báo",
-                                        tint = dangerColor,
+                                        tint = if (isScoreboard) ArcaneCyan else if (isShop) ImperialGold else dangerColor,
                                         modifier = Modifier
                                             .size(13.dp)
                                             .padding(top = 1.dp)

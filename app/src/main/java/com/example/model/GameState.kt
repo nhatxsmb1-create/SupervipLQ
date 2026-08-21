@@ -1,8 +1,17 @@
 package com.example.model
 
 import com.example.detection.DetectedUIComponent
-
 import java.util.Locale
+
+data class HeroScoreboardEntry(
+    val heroName: String,
+    val playerName: String = "",
+    val kda: String = "",
+    val gold: Int = 0,
+    val level: Int = 1,
+    val isAlly: Boolean = true,
+    val items: List<String> = emptyList()
+)
 
 data class GameState(
     val matchActive: Boolean? = null,
@@ -12,8 +21,19 @@ data class GameState(
     val enemyKills: Int? = null,
     val goldDifference: Int? = null,
     val playerHero: String? = null,
+    val currentShopGold: Int? = null,
+    val allyTotalGold: Int? = null,
+    val enemyTotalGold: Int? = null,
+    val allyTowers: Int? = null,
+    val enemyTowers: Int? = null,
+    val allyDragons: Int? = null,
+    val enemyDragons: Int? = null,
+    val allySlayers: Int? = null,
+    val enemySlayers: Int? = null,
     val allyHeroes: List<String>? = null,
     val enemyHeroes: List<String>? = null,
+    val allyRoster: List<HeroScoreboardEntry> = emptyList(),
+    val enemyRoster: List<HeroScoreboardEntry> = emptyList(),
     val playerItems: List<String>? = null,
     val visibleEnemiesOnMinimap: Int? = null,
     val objectives: List<ObjectiveTarget>? = null,
@@ -24,7 +44,9 @@ data class GameState(
     val captureIntervalMs: Long = 3000L,
     val frameChangedPercent: Float = 0f,
     val detectedComponents: List<DetectedUIComponent> = emptyList(),
-    val rawOcrSummary: String = ""
+    val rawOcrSummary: String = "",
+    val detailedRosterAnalysis: String? = null,
+    val counterBuildAdvice: List<String> = emptyList()
 ) {
     val formattedMatchTime: String
         get() = matchTimeSeconds?.let {
@@ -47,3 +69,4 @@ data class GameState(
             String.format(Locale.US, "%s%.1fk Vàng", sign, kValue)
         } ?: "-- Vàng"
 }
+

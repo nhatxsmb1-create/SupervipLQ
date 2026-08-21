@@ -342,6 +342,40 @@ fun RealImageOcrTestLabCard(
 
                         Spacer(modifier = Modifier.height(6.dp))
 
+                        // Hiển thị Đội hình bóc tách được nếu có
+                        if (gs.allyRoster.isNotEmpty() || gs.enemyRoster.isNotEmpty()) {
+                            val allyNames = gs.allyRoster.map { "${it.heroName} (${if (it.kda.isNotBlank()) it.kda else "${it.gold}G"})" }.joinToString(", ")
+                            val enemyNames = gs.enemyRoster.map { "${it.heroName} (${if (it.kda.isNotBlank()) it.kda else "${it.gold}G"})" }.joinToString(", ")
+
+                            if (allyNames.isNotBlank()) {
+                                Text(
+                                    text = "🔵 Phe Ta: $allyNames",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ArcaneCyan
+                                )
+                            }
+                            if (enemyNames.isNotBlank()) {
+                                Text(
+                                    text = "🔴 Phe Địch: $enemyNames",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DefeatRed
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+
+                        if (gs.currentShopGold != null && gs.currentShopGold > 0) {
+                            Text(
+                                text = "💰 Vàng Kho Đồ: ${gs.currentShopGold} Vàng",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = ImperialGold
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                        }
+
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()

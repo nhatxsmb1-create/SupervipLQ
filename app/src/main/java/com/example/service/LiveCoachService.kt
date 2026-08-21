@@ -213,13 +213,13 @@ class LiveCoachService : Service() {
                         bounds?.height() ?: metrics.heightPixels
                     } else metrics.heightPixels
 
-                    val captureW = maxOf(realW, realH).coerceAtLeast(1280)
-                    val captureH = minOf(realH, realW).coerceAtMost(minOf(realW, realH)).coerceAtLeast(720)
+                    val screenLandscapeW = maxOf(realW, realH)
+                    val screenLandscapeH = minOf(realW, realH)
                     val realDpi = metrics.densityDpi.coerceAtLeast(240)
 
                     val acm = AutoCaptureManager(
-                        displayWidth = captureW,
-                        displayHeight = captureH,
+                        displayWidth = screenLandscapeW,
+                        displayHeight = screenLandscapeH,
                         displayDpi = realDpi
                     )
                     autoCaptureManager = acm
@@ -235,6 +235,15 @@ class LiveCoachService : Service() {
     @Volatile
     private var isAnalyzingFrame = false
 
+    @Volatile
+    private var authoritativeMatchTime: Int = 0
+
+    @Volatile
+    private var lastOcrTimestamp: Long = 0L
+
+    @Volatile
+    private var isCurrentlyInMatch: Boolean = false
+
     private fun observeAutoCapturedFrames(acm: AutoCaptureManager) {
         serviceScope.launch(Dispatchers.Default) {
             acm.capturedFrames.collect { bitmap ->
@@ -244,16 +253,51 @@ class LiveCoachService : Service() {
                 }
                 isAnalyzingFrame = true
                 try {
-                    val gameState = visionEngine.analyzeFrameToGameState(
+                    val rawGameState = visionEngine.analyzeFrameToGameState(
                         bitmap = bitmap,
                         captureIntervalMs = acm.getCurrentIntervalMs()
                     )
 
-                    CoachStateHub.updateGameState(gameState)
-                    acm.setAdaptiveState(gameState.screenState)
+                    val isMatch = rawGameState.screenState in listOf(
+                        ScreenState.IN_MATCH,
+                        ScreenState.SCOREBOARD_OPEN,
+                        ScreenState.SHOP_OPEN,
+                        ScreenState.COMBAT
+                    )
+
+                    if (isMatch) {
+                        isCurrentlyInMatch = true
+                        if (rawGameState.matchTimeSeconds != null && rawGameState.matchTimeSeconds > 0) {
+                            authoritativeMatchTime = rawGameState.matchTimeSeconds
+                            lastOcrTimestamp = System.currentTimeMillis()
+                        }
+                    } else {
+                        isCurrentlyInMatch = false
+                        authoritativeMatchTime = 0
+                        lastOcrTimestamp = 0L
+                    }
+
+                    val currentCalculatedTime = if (isCurrentlyInMatch) {
+                        if (authoritativeMatchTime > 0 && lastOcrTimestamp > 0L) {
+                            val elapsed = ((System.currentTimeMillis() - lastOcrTimestamp) / 1000L).toInt()
+                            authoritativeMatchTime + elapsed
+                        } else {
+                            rawGameState.matchTimeSeconds ?: 0
+                        }
+                    } else {
+                        0
+                    }
+
+                    val syncedGameState = rawGameState.copy(
+                        matchTimeSeconds = currentCalculatedTime,
+                        matchActive = isCurrentlyInMatch
+                    )
+
+                    CoachStateHub.updateGameState(syncedGameState)
+                    acm.setAdaptiveState(syncedGameState.screenState)
 
                     val currentState = CoachStateHub.tacticalState.value
-                    val eval = tacticalEngine.evaluateGameState(gameState, currentState)
+                    val eval = tacticalEngine.evaluateGameState(syncedGameState, currentState)
 
                     CoachStateHub.updateState(eval.newState)
 
@@ -372,25 +416,26 @@ class LiveCoachService : Service() {
         clockTickerJob = serviceScope.launch {
             while (isActive) {
                 delay(1000L)
-                val current = CoachStateHub.tacticalState.value
-                val inMatch = current.coachStatus == CoachStatus.IN_MATCH_READY ||
-                        current.coachStatus == CoachStatus.IN_MATCH_ANALYZING
+                if (isCurrentlyInMatch && authoritativeMatchTime > 0 && lastOcrTimestamp > 0L) {
+                    val currentTactical = CoachStateHub.tacticalState.value
+                    val elapsed = ((System.currentTimeMillis() - lastOcrTimestamp) / 1000L).toInt()
+                    val smoothTime = authoritativeMatchTime + elapsed
 
-                if (inMatch && current.matchTimeSeconds >= 0) {
-                    val nextTime = current.matchTimeSeconds + 1
-                    val currentGameState = CoachStateHub.gameState.value.copy(
-                        matchTimeSeconds = nextTime,
-                        matchActive = true
-                    )
-                    val eval = tacticalEngine.evaluateGameState(currentGameState, current)
-                    CoachStateHub.updateState(eval.newState)
-
-                    eval.voiceCallout?.let { phrase ->
-                        voiceCoach?.speakCallout(
-                            callout = phrase,
-                            tag = eval.calloutTag,
-                            priority = eval.calloutPriority
+                    if (smoothTime != currentTactical.matchTimeSeconds) {
+                        val currentGameState = CoachStateHub.gameState.value.copy(
+                            matchTimeSeconds = smoothTime,
+                            matchActive = true
                         )
+                        val eval = tacticalEngine.evaluateGameState(currentGameState, currentTactical)
+                        CoachStateHub.updateState(eval.newState)
+
+                        eval.voiceCallout?.let { phrase ->
+                            voiceCoach?.speakCallout(
+                                callout = phrase,
+                                tag = eval.calloutTag,
+                                priority = eval.calloutPriority
+                            )
+                        }
                     }
                 }
             }

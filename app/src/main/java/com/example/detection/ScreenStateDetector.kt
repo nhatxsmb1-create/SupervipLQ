@@ -27,13 +27,31 @@ class ScreenStateDetector {
         }
 
         // Check if Scoreboard or Shop component was detected dynamically
-        val hasScoreboardComponent = detectedComponents.any { it.componentName == "Scoreboard" && it.confidence > 0.5f }
-        if (hasScoreboardComponent || ocrText.contains("KDA", ignoreCase = true) || (ocrText.contains("Trang bị", ignoreCase = true) && ocrText.contains("Vàng", ignoreCase = true))) {
+        val hasScoreboardKeywords = ocrText.contains("Thông số tướng", ignoreCase = true) ||
+                ocrText.contains("Thuộc tính tướng", ignoreCase = true) ||
+                ocrText.contains("View Defeat Recap", ignoreCase = true) ||
+                ocrText.contains("Defeat Recap", ignoreCase = true) ||
+                ocrText.contains("Tố cáo chatvoice", ignoreCase = true) ||
+                ocrText.contains("chatvoice", ignoreCase = true) ||
+                ocrText.contains("KDA", ignoreCase = true) ||
+                (ocrText.contains("Xếp", ignoreCase = true) && ocrText.contains("Mặc", ignoreCase = true))
+
+        val hasScoreboardComponent = detectedComponents.any { it.componentName == "Scoreboard" && it.confidence > 0.4f }
+        if (hasScoreboardComponent || hasScoreboardKeywords) {
             return ScreenState.SCOREBOARD_OPEN
         }
 
+        val hasShopKeywords = ocrText.contains("Shop", ignoreCase = true) ||
+                ocrText.contains("Đề cử", ignoreCase = true) ||
+                ocrText.contains("Giữ mạng", ignoreCase = true) ||
+                ocrText.contains("Tên bộ trang", ignoreCase = true) ||
+                ocrText.contains("trang bị tiến cử", ignoreCase = true) ||
+                ocrText.contains("Cửa Hàng", ignoreCase = true) ||
+                (ocrText.contains("Công", ignoreCase = true) && ocrText.contains("Phép", ignoreCase = true)) ||
+                (ocrText.contains("Thủ", ignoreCase = true) && ocrText.contains("Tốc chạy", ignoreCase = true))
+
         val hasShopComponent = detectedComponents.any { it.componentName == "ShopUI" && it.confidence > 0.4f }
-        if (hasShopComponent || ocrText.contains("Cửa Hàng", ignoreCase = true) || (ocrText.contains("Công", ignoreCase = true) && ocrText.contains("Phép", ignoreCase = true) && ocrText.contains("Thủ", ignoreCase = true))) {
+        if (hasShopComponent || hasShopKeywords) {
             return ScreenState.SHOP_OPEN
         }
 
