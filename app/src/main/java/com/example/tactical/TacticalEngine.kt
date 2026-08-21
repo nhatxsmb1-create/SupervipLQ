@@ -25,12 +25,17 @@ class TacticalEngine {
         val isMatchActive = gameState.matchActive == true
         val confidence = gameState.overallConfidence
 
-        val coachStatus = when {
-            gameState.screenState == ScreenState.HERO_SELECTION -> CoachStatus.IN_HERO_SELECTION
-            gameState.screenState == ScreenState.LOADING -> CoachStatus.LOADING_MATCH
-            gameState.screenState == ScreenState.MATCH_END -> CoachStatus.MATCH_ENDED
-            gameState.screenState == ScreenState.GAME_MENU -> CoachStatus.DETECTING_MATCH
-            else -> CoachStatus.IN_MATCH_READY
+        val coachStatus = when (gameState.screenState) {
+            ScreenState.HERO_SELECTION -> CoachStatus.IN_HERO_SELECTION
+            ScreenState.LOADING -> CoachStatus.LOADING_MATCH
+            ScreenState.MATCH_END -> CoachStatus.MATCH_ENDED
+            ScreenState.GAME_MENU -> CoachStatus.DETECTING_MATCH
+            ScreenState.IN_MATCH,
+            ScreenState.SCOREBOARD_OPEN,
+            ScreenState.SHOP_OPEN,
+            ScreenState.COMBAT -> CoachStatus.IN_MATCH_READY
+            ScreenState.OUTSIDE_GAME,
+            ScreenState.UNKNOWN -> CoachStatus.OUTSIDE_MATCH
         }
 
         // Handle Hero Selection (Ban-Pick phase)
