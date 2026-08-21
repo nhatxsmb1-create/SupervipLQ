@@ -1,12 +1,12 @@
 package com.example.detection
 
 import android.graphics.Bitmap
-import android.graphics.Color
 import com.example.model.ScreenState
 
 /**
- * Screen State Detector that inspects visible screen information dynamically to classify screen mode.
- * Zero user intervention required.
+ * High-accuracy Screen State Detector for Arena of Valor (Liên Quân Mobile).
+ * Correctly distinguishes outside game (vertical / non-game), lobby menu, hero selection (ban-pick),
+ * loading, active match, scoreboard, and shop without emitting fake match signals outside game.
  */
 class ScreenStateDetector {
 
@@ -17,18 +17,27 @@ class ScreenStateDetector {
     ): ScreenState {
         if (bitmap.isRecycled) return ScreenState.UNKNOWN
 
+        val w = bitmap.width
+        val h = bitmap.height
+        val isLandscape = w > h
+
+        // If screen is strictly vertical (portrait mode), user is definitely outside the game or in system launcher
+        if (!isLandscape) {
+            return ScreenState.OUTSIDE_GAME
+        }
+
         // Check if Scoreboard or Shop component was detected dynamically
         val hasScoreboardComponent = detectedComponents.any { it.componentName == "Scoreboard" && it.confidence > 0.5f }
-        if (hasScoreboardComponent) {
+        if (hasScoreboardComponent || ocrText.contains("KDA", ignoreCase = true) || ocrText.contains("Trang bị", ignoreCase = true) && ocrText.contains("Vàng", ignoreCase = true)) {
             return ScreenState.SCOREBOARD_OPEN
         }
 
         val hasShopComponent = detectedComponents.any { it.componentName == "ShopUI" && it.confidence > 0.4f }
-        if (hasShopComponent) {
+        if (hasShopComponent || ocrText.contains("Cửa Hàng", ignoreCase = true) || (ocrText.contains("Công", ignoreCase = true) && ocrText.contains("Phép", ignoreCase = true) && ocrText.contains("Thủ", ignoreCase = true))) {
             return ScreenState.SHOP_OPEN
         }
 
-        // Timer regex matching (e.g., 00:24, 0:24, 00.24, 00 24, 15:30)
+        // Timer regex matching (e.g., 00:24, 0:24, 00.24, 15:30, 02:00)
         val hasTimerPattern = ocrText.contains(Regex("(\\d{1,2})\\s*[:.bB1lI-]\\s*(\\d{2})")) ||
                 ocrText.contains(Regex("\\d{1,2}:\\d{2}"))
 
@@ -55,36 +64,30 @@ class ScreenStateDetector {
                 ocrText.contains("Tốc biến", ignoreCase = true) ||
                 ocrText.contains("Bộc phá", ignoreCase = true) ||
                 ocrText.contains("ms", ignoreCase = true) ||
-                ocrText.contains("fps", ignoreCase = true) ||
-                ocrText.contains("UID", ignoreCase = true)
+                ocrText.contains("fps", ignoreCase = true)
 
-        if (hasHeroSelectionText && !hasTimerPattern && !hasInGameKeywords) {
+        if (hasHeroSelectionText && !hasTimerPattern) {
             return ScreenState.HERO_SELECTION
         }
-
-        val w = bitmap.width
-        val h = bitmap.height
-        val isLandscape = w >= h
 
         val hasStrictLobbyText = ocrText.contains("Bắt Đầu Tìm Trận", ignoreCase = true) ||
                 ocrText.contains("Mời Bè Bạn", ignoreCase = true) ||
                 ocrText.contains("Sảnh Chờ", ignoreCase = true) ||
                 ocrText.contains("Gia Nhập Phòng", ignoreCase = true) ||
-                ocrText.contains("Đang tìm trận", ignoreCase = true)
+                ocrText.contains("Đang tìm trận", ignoreCase = true) ||
+                ocrText.contains("Đấu Đỉnh Cao", ignoreCase = true) ||
+                ocrText.contains("Đấu Hạng", ignoreCase = true)
 
-        if (hasStrictLobbyText && !hasTimerPattern && !hasInGameKeywords && !hasHeroSelectionText) {
+        if (hasStrictLobbyText && !hasTimerPattern && !hasInGameKeywords) {
             return ScreenState.GAME_MENU
         }
 
-        // If screen is in landscape mode (Arena of Valor aspect ratio > 1), classify as IN_MATCH
-        if (isLandscape) {
+        // When in landscape and timer or in-game HUD indicators are found -> IN_MATCH
+        if (hasTimerPattern || hasInGameKeywords) {
             return ScreenState.IN_MATCH
         }
 
-        return if (hasTimerPattern || hasInGameKeywords) {
-            ScreenState.IN_MATCH
-        } else {
-            ScreenState.OUTSIDE_GAME
-        }
+        // Default landscape state if no match keywords found yet: GAME_MENU / DETECTING
+        return ScreenState.GAME_MENU
     }
 }

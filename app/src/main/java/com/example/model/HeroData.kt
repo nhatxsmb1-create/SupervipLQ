@@ -101,7 +101,38 @@ object HeroDatabase {
             counteredBy = listOf("Aoi", "Zill", "Kaine", "Ngộ Không"),
             counterStrategy = "Dùng Sát Thủ tàng hình hoặc bay nhảy áp sát nhanh. Phá mắt Ưng Trạm của Elsu trong bụi cỏ.",
             recommendedItems = listOf("Kiếm Muramasa", "Nanh Fenrir", "Giáp Hộ Mệnh")
+        ),
+        HeroInfo(
+            name = "Hayate",
+            role = "Xạ Thủ (AD) / Sát Thương Chuẩn",
+            powerSpike = "Giữa & Cuối Trận",
+            counterHeroes = listOf("Thane", "Toro", "Arthur", "Taara"),
+            counteredBy = listOf("Valhein", "Joker", "Kaine", "Aleister"),
+            counterStrategy = "Hayate gây sát thương chuẩn cực mạnh theo % máu. Đỡ đòn lên Khiên Huyền Thoại / Khiên Thất Truyền giảm tốc đánh. Dùng khống chế cứng ngắt Bão Phi Tiêu.",
+            recommendedItems = listOf("Khiên Thất Truyền", "Khiên Huyền Thoại", "Giáp Thống Khổ")
+        ),
+        HeroInfo(
+            name = "Ngộ Không",
+            role = "Sát Thủ / Rừng & Top",
+            powerSpike = "Cuối Trận",
+            counterHeroes = listOf("Yorn", "Tel'Annas", "Krixi", "Veera"),
+            counteredBy = listOf("Phụ Kiện Ma Nhãn", "Mina", "Omen", "Thane"),
+            counterStrategy = "Trợ Thủ lên Ma Nhãn soi tàng hình. Mua Giáp Thống Khổ và Khiên Huyền Thoại để giảm chí mạng.",
+            recommendedItems = listOf("Phụ Kiện Ma Nhãn", "Giáp Thống Khổ", "Nham Thuẫn")
+        ),
+        HeroInfo(
+            name = "Valhein",
+            role = "Xạ Thủ (AD) / Thả Diều",
+            powerSpike = "Đầu Trận",
+            counterHeroes = listOf("Hayate", "Florentino", "Airi"),
+            counteredBy = listOf("Elsu", "Yue", "Zuka", "Kaine"),
+            counterStrategy = "Valhein bắn cực thốn đầu game nhưng tụt dame late game. Giữ khoảng cách tầm xa để cấu rỉa bằng Pháp Sư.",
+            recommendedItems = listOf("Giày Kiên Cường", "Khiên Thất Truyền", "Giáp Thống Khổ")
         )
     )
-}
 
+    fun findHero(nameQuery: String): HeroInfo? {
+        val q = nameQuery.trim().lowercase()
+        return heroes.firstOrNull { it.name.lowercase().contains(q) || q.contains(it.name.lowercase()) }
+    }
+}
