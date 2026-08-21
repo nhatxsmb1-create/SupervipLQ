@@ -174,18 +174,7 @@ fun CoachOverlayScreen(
                     // Nút Quét / Phân Tích Màn Hình Tức Thì
                     IconButton(
                         onClick = {
-                            val current = CoachStateHub.tacticalState.value
-                            CoachStateHub.updateState(
-                                current.copy(
-                                    coachStatus = CoachStatus.IN_MATCH_READY,
-                                    gameDataValid = true,
-                                    analysisReady = true,
-                                    matchTimeSeconds = if (current.matchTimeSeconds > 0) current.matchTimeSeconds else 120,
-                                    dangerWarning = "Đã quét: Đội hình cân bằng. Kiểm soát hang Rồng & quan sát bản đồ!",
-                                    dangerLevel = DangerLevel.SAFE,
-                                    winProbability = 54
-                                )
-                            )
+                            LiveCoachService.triggerInstantScan()
                         },
                         modifier = Modifier
                             .size(24.dp)

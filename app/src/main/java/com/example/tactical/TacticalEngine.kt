@@ -137,6 +137,7 @@ class TacticalEngine {
             matchTimeSeconds in 480 until 900 && goldDiff >= 1000 -> ObjectiveTarget.DARK_SLAYER // 08:00+ Caesar Hắc Ám Cấp 2
             matchTimeSeconds in 120 until 480 && goldDiff >= -1500 -> ObjectiveTarget.ABYSSAL_DRAGON // 02:00+ Rồng Ánh Sáng Krayg
             matchTimeSeconds in 70 until 120 -> ObjectiveTarget.SPIRIT_SENTINEL // Dơi Thủ Vệ
+            matchTimeSeconds in 1 until 70 -> ObjectiveTarget.FARM_SAFE // Giai đoạn farm khởi đầu
             goldDiff <= -6000 -> ObjectiveTarget.HIGH_GROUND_DEFENSE
             goldDiff >= 4000 -> ObjectiveTarget.MID_TOWER
             else -> ObjectiveTarget.FARM_SAFE
@@ -155,6 +156,16 @@ class TacticalEngine {
                 voiceCallout = "Cẩn thận - Đang thua tiền, lùi về ôm trụ"
                 calloutTag = "danger_gold_deficit"
                 calloutPriority = 3
+            }
+            matchTimeSeconds in 1..40 -> {
+                dangerWarning = "Mốc 00:30: Rừng đang ăn bùa 1. Trợ Thủ/Pháp Sư kiểm tra bụi sông canh bùa."
+                dangerLevel = DangerLevel.SAFE
+                calloutTag = "early_buff_protect"
+            }
+            matchTimeSeconds in 41..79 -> {
+                dangerWarning = "Mốc 00:48: Dọn đợt lính thứ 2. Giữ vị trí cẩn thận, chuẩn bị tranh Dơi Thủ Vệ."
+                dangerLevel = DangerLevel.LOW
+                calloutTag = "early_wave_2"
             }
             matchTimeSeconds in 80..115 -> {
                 dangerWarning = "Mốc 01:30: Rừng đối phương đạt Cấp 4! Chú ý kiểm tra bụi sông đề phòng gank bất ngờ!"

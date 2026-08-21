@@ -50,12 +50,11 @@ class VisionAnalysisEngine : IVisionEngine {
     private val dynamicROIExtractor = DynamicROIExtractor()
     private val screenStateDetector = ScreenStateDetector()
 
-    private val timePattern = Pattern.compile("(\\d{1,2})[:.](\\d{2})")
-    private val scorePattern = Pattern.compile("(\\d{1,2})\\s*[-:]\\s*(\\d{1,2})")
-    private val goldPattern = Pattern.compile("([\\d.]+)[kK]?\\s*vs\\s*([\\d.]+)[kK]?", Pattern.CASE_INSENSITIVE)
+    private val scorePattern = Pattern.compile("(\\d{1,2})\\s*(?:vs|v|VS|Vs|[-:])\\s*(\\d{1,2})")
+    private val goldVsPattern = Pattern.compile("([\\d.]+)[kK]?\\s*vs\\s*([\\d.]+)[kK]?", Pattern.CASE_INSENSITIVE)
+    private val goldNumberPattern = Pattern.compile("(\\d{3,5})")
 
     private var cachedGameState: GameState = GameState()
-
     private var lastFullAnalysisTimeMs: Long = 0L
 
     override suspend fun analyzeFrameToGameState(
@@ -71,10 +70,9 @@ class VisionAnalysisEngine : IVisionEngine {
         // 1. Frame Change Detection
         val changeResult = frameChangeDetector.checkFrameChange(bitmap)
         val timeSinceLastFull = startTime - lastFullAnalysisTimeMs
-        val shouldForceAnalysis = timeSinceLastFull > 1000L || cachedGameState.screenState == ScreenState.OUTSIDE_GAME
+        val shouldForceAnalysis = timeSinceLastFull > 800L || cachedGameState.screenState == ScreenState.OUTSIDE_GAME
 
         if (!changeResult.hasChanged && !shouldForceAnalysis) {
-            // Screen has not changed significantly, return cached state with updated stats
             return@withContext cachedGameState.copy(
                 frameProcessingTimeMs = System.currentTimeMillis() - startTime,
                 captureIntervalMs = captureIntervalMs,
@@ -88,30 +86,38 @@ class VisionAnalysisEngine : IVisionEngine {
             // 2. Dynamic UI Component Detection
             val detectedComponents = dynamicUIDetector.detectUIComponents(bitmap)
 
-            // Perform full-frame text recognition for accurate text detection
-            val fullText = recognizeText(bitmap)
             val ocrTextBuilder = StringBuilder()
-            if (fullText.isNotBlank()) {
-                ocrTextBuilder.append(fullText).append("\n")
-            }
 
-            // ROI A: Top Right Header (Timer 00:57, KDA 0 vs 0, Ping)
-            var timerCrop: Bitmap? = null
+            // Targeted ROI 1: Top Right Header (Timer 00:48, KDA 1 vs 0, Ping 24ms)
+            var topHeaderCrop: Bitmap? = null
             try {
-                timerCrop = dynamicROIExtractor.cropNormalizedRegion(bitmap, RectF(0.60f, 0.00f, 1.00f, 0.25f))
-                if (timerCrop != null && !timerCrop.isRecycled) {
-                    val t = recognizeText(timerCrop)
+                topHeaderCrop = dynamicROIExtractor.cropNormalizedRegion(bitmap, RectF(0.60f, 0.00f, 0.98f, 0.20f))
+                if (topHeaderCrop != null && !topHeaderCrop.isRecycled) {
+                    val t = recognizeText(topHeaderCrop)
                     if (t.isNotBlank()) ocrTextBuilder.append(t).append("\n")
                 }
             } catch (_: Exception) {
             } finally {
-                timerCrop?.recycle()
+                topHeaderCrop?.recycle()
             }
 
-            // ROI C: Left Shop & Gold (Gold 8840)
+            // Targeted ROI 2: Bottom Spells (Biến về, Hồi máu, Tốc biến, Trừng trị)
+            var spellsCrop: Bitmap? = null
+            try {
+                spellsCrop = dynamicROIExtractor.cropNormalizedRegion(bitmap, RectF(0.30f, 0.70f, 0.70f, 1.00f))
+                if (spellsCrop != null && !spellsCrop.isRecycled) {
+                    val t = recognizeText(spellsCrop)
+                    if (t.isNotBlank()) ocrTextBuilder.append(t).append("\n")
+                }
+            } catch (_: Exception) {
+            } finally {
+                spellsCrop?.recycle()
+            }
+
+            // Targeted ROI 3: Left Gold Shop button (e.g. 9135)
             var goldCrop: Bitmap? = null
             try {
-                goldCrop = dynamicROIExtractor.cropNormalizedRegion(bitmap, RectF(0.00f, 0.20f, 0.25f, 0.60f))
+                goldCrop = dynamicROIExtractor.cropNormalizedRegion(bitmap, RectF(0.02f, 0.25f, 0.18f, 0.60f))
                 if (goldCrop != null && !goldCrop.isRecycled) {
                     val t = recognizeText(goldCrop)
                     if (t.isNotBlank()) ocrTextBuilder.append(t).append("\n")
@@ -121,23 +127,25 @@ class VisionAnalysisEngine : IVisionEngine {
                 goldCrop?.recycle()
             }
 
+            // Full-frame OCR if targeted didn't find time or state
+            var fullText = ""
+            if (ocrTextBuilder.length < 15) {
+                fullText = recognizeText(bitmap)
+                if (fullText.isNotBlank()) {
+                    ocrTextBuilder.append(fullText).append("\n")
+                }
+            }
+
             val ocrText = ocrTextBuilder.toString().trim()
 
             // 4. Screen State Classification
             val screenState = screenStateDetector.detectScreenState(bitmap, ocrText, detectedComponents)
 
             // 5. OCR parsing
-            var parsedTimeSec: Int? = null
+            val parsedTimeSec: Int? = parseAoVTime(ocrText)
             var parsedAllyKills: Int? = null
             var parsedEnemyKills: Int? = null
             var parsedGoldDiff: Int? = null
-
-            val timeMatcher = timePattern.matcher(ocrText)
-            if (timeMatcher.find()) {
-                val min = timeMatcher.group(1)?.toIntOrNull() ?: 0
-                val sec = timeMatcher.group(2)?.toIntOrNull() ?: 0
-                parsedTimeSec = (min * 60) + sec
-            }
 
             val scoreMatcher = scorePattern.matcher(ocrText)
             if (scoreMatcher.find()) {
@@ -145,10 +153,10 @@ class VisionAnalysisEngine : IVisionEngine {
                 parsedEnemyKills = scoreMatcher.group(2)?.toIntOrNull()
             }
 
-            val goldMatcher = goldPattern.matcher(ocrText)
-            if (goldMatcher.find()) {
-                val allyG = parseGoldValue(goldMatcher.group(1))
-                val enemyG = parseGoldValue(goldMatcher.group(2))
+            val goldVsMatcher = goldVsPattern.matcher(ocrText)
+            if (goldVsMatcher.find()) {
+                val allyG = parseGoldValue(goldVsMatcher.group(1))
+                val enemyG = parseGoldValue(goldVsMatcher.group(2))
                 if (allyG != null && enemyG != null) {
                     parsedGoldDiff = allyG - enemyG
                 }
@@ -161,7 +169,7 @@ class VisionAnalysisEngine : IVisionEngine {
                 ScreenState.COMBAT
             )
 
-            // Dynamic time calculation: sync with OCR if parsed, or tick continuously when active
+            // Dynamic continuous time sync
             val cachedTime = cachedGameState.matchTimeSeconds ?: 0
             val finalTimeSec = when {
                 parsedTimeSec != null -> parsedTimeSec
@@ -174,8 +182,8 @@ class VisionAnalysisEngine : IVisionEngine {
             }
 
             val confidence = when {
-                parsedTimeSec != null -> 0.95f
-                isMatchActive -> 0.85f
+                parsedTimeSec != null -> 0.98f
+                isMatchActive -> 0.90f
                 screenState == ScreenState.HERO_SELECTION -> 0.90f
                 screenState == ScreenState.GAME_MENU -> 0.80f
                 else -> 0.50f
@@ -206,6 +214,25 @@ class VisionAnalysisEngine : IVisionEngine {
             Log.e("VisionEngine", "GameState analysis failed", e)
             cachedGameState
         }
+    }
+
+    private fun parseAoVTime(text: String): Int? {
+        val lines = text.lines()
+        for (line in lines) {
+            // Match time pattern: 00:48, 01:30, 00.48, 00 48, 12:34
+            val regex = Regex("""\b([0-5]?[0-9])\s*[:.\s;,|I!]\s*([0-5][0-9])\b""")
+            val match = regex.find(line)
+            if (match != null) {
+                val minStr = match.groupValues[1].replace("O", "0").replace("o", "0")
+                val secStr = match.groupValues[2].replace("O", "0").replace("o", "0")
+                val min = minStr.toIntOrNull() ?: 0
+                val sec = secStr.toIntOrNull() ?: 0
+                if (min < 60 && sec < 60) {
+                    return (min * 60) + sec
+                }
+            }
+        }
+        return null
     }
 
     override suspend fun analyzeFrame(bitmap: Bitmap): VisionScanResult {

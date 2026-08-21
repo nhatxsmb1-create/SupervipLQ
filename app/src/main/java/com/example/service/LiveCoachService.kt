@@ -20,7 +20,6 @@ import android.os.Looper
 import android.provider.Settings
 import android.util.Log
 import android.view.Gravity
-import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import androidx.compose.ui.platform.ComposeView
@@ -38,7 +37,8 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.example.MainActivity
 import com.example.autocapture.AutoCaptureManager
-import com.example.model.DetectedScreenMode
+import com.example.model.CoachStatus
+import com.example.model.DangerLevel
 import com.example.model.GameState
 import com.example.model.ScreenState
 import com.example.tactical.TacticalEngine
@@ -49,10 +49,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import kotlin.math.abs
 
 class ServiceLifecycleOwner : LifecycleOwner, ViewModelStoreOwner, SavedStateRegistryOwner {
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -91,7 +89,7 @@ class LiveCoachService : Service() {
     private var serviceLifecycleOwner: ServiceLifecycleOwner? = null
 
     private val serviceScope = CoroutineScope(Dispatchers.Main + Job())
-    private var analysisLoopJob: Job? = null
+    private var clockTickerJob: Job? = null
 
     private val tacticalEngine = TacticalEngine()
     private val visionEngine = VisionAnalysisEngine()
@@ -113,10 +111,18 @@ class LiveCoachService : Service() {
 
         var projectionResultCode: Int = 0
         var projectionResultData: Intent? = null
+
+        @Volatile
+        var instance: LiveCoachService? = null
+
+        fun triggerInstantScan() {
+            instance?.performInstantScan()
+        }
     }
 
     override fun onCreate() {
         super.onCreate()
+        instance = this
         voiceCoach = VoiceCoach(this)
         createNotificationChannel()
     }
@@ -147,7 +153,7 @@ class LiveCoachService : Service() {
         }
 
         setupMediaProjectionIfAvailable(intent)
-        startAdaptiveCoachLoop()
+        startRealtimeClockTicker()
 
         return START_STICKY
     }
@@ -268,6 +274,33 @@ class LiveCoachService : Service() {
         }
     }
 
+    fun performInstantScan() {
+        serviceScope.launch(Dispatchers.Default) {
+            val currentTactical = CoachStateHub.tacticalState.value
+            val currentGameState = CoachStateHub.gameState.value
+
+            val currentTime = if (currentTactical.matchTimeSeconds > 0) currentTactical.matchTimeSeconds else 48
+            val simulatedGameState = currentGameState.copy(
+                matchActive = true,
+                screenState = ScreenState.IN_MATCH,
+                matchTimeSeconds = currentTime,
+                overallConfidence = 0.95f
+            )
+
+            CoachStateHub.updateGameState(simulatedGameState)
+            val eval = tacticalEngine.evaluateGameState(simulatedGameState, currentTactical)
+            CoachStateHub.updateState(eval.newState)
+
+            eval.voiceCallout?.let { phrase ->
+                voiceCoach?.speakCallout(
+                    callout = phrase,
+                    tag = eval.calloutTag,
+                    priority = eval.calloutPriority
+                )
+            }
+        }
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     private fun showFloatingOverlay() {
         if (overlayFloatingView != null) return
@@ -334,17 +367,30 @@ class LiveCoachService : Service() {
         }
     }
 
-    private fun startAdaptiveCoachLoop() {
-        analysisLoopJob?.cancel()
-        analysisLoopJob = serviceScope.launch {
+    private fun startRealtimeClockTicker() {
+        clockTickerJob?.cancel()
+        clockTickerJob = serviceScope.launch {
             while (isActive) {
-                delay(3000L)
-                // Frame capture via observeAutoCapturedFrames handles real-time updates.
-                // If capture is inactive, reset to idle status.
-                if (autoCaptureManager == null) {
-                    val currentState = CoachStateHub.tacticalState.value
-                    if (currentState.coachStatus != com.example.model.CoachStatus.OUTSIDE_MATCH) {
-                        CoachStateHub.resetToIdle()
+                delay(1000L)
+                val current = CoachStateHub.tacticalState.value
+                val inMatch = current.coachStatus == CoachStatus.IN_MATCH_READY ||
+                        current.coachStatus == CoachStatus.IN_MATCH_ANALYZING
+
+                if (inMatch && current.matchTimeSeconds >= 0) {
+                    val nextTime = current.matchTimeSeconds + 1
+                    val currentGameState = CoachStateHub.gameState.value.copy(
+                        matchTimeSeconds = nextTime,
+                        matchActive = true
+                    )
+                    val eval = tacticalEngine.evaluateGameState(currentGameState, current)
+                    CoachStateHub.updateState(eval.newState)
+
+                    eval.voiceCallout?.let { phrase ->
+                        voiceCoach?.speakCallout(
+                            callout = phrase,
+                            tag = eval.calloutTag,
+                            priority = eval.calloutPriority
+                        )
                     }
                 }
             }
@@ -394,7 +440,7 @@ class LiveCoachService : Service() {
     }
 
     private fun stopServiceAndCleanup() {
-        analysisLoopJob?.cancel()
+        clockTickerJob?.cancel()
         autoCaptureManager?.stopCapture()
         autoCaptureManager = null
         mediaProjection?.stop()
@@ -420,6 +466,7 @@ class LiveCoachService : Service() {
     }
 
     override fun onDestroy() {
+        instance = null
         stopServiceAndCleanup()
         super.onDestroy()
     }

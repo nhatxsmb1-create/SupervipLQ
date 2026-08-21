@@ -41,6 +41,8 @@ class CoachViewModel(application: Application) : AndroidViewModel(application) {
 
     private val voiceCoach = VoiceCoach(application)
     private val tacticalEngine = TacticalEngine()
+    private var simulationJob: kotlinx.coroutines.Job? = null
+    val isSimulatingFlow = kotlinx.coroutines.flow.MutableStateFlow(false)
 
     fun canDrawOverlays(): Boolean {
         return Settings.canDrawOverlays(getApplication())
@@ -60,11 +62,82 @@ class CoachViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun stopCoachService() {
+        stopMatchSimulation()
         val context = getApplication<Application>()
         val intent = Intent(context, LiveCoachService::class.java).apply {
             action = LiveCoachService.ACTION_STOP
         }
         context.startService(intent)
+    }
+
+    fun toggleMatchSimulation() {
+        if (isSimulatingFlow.value) {
+            stopMatchSimulation()
+        } else {
+            startMatchSimulation()
+        }
+    }
+
+    fun startMatchSimulation() {
+        simulationJob?.cancel()
+        isSimulatingFlow.value = true
+
+        // Ensure service overlay is visible if overlay permission is granted
+        if (canDrawOverlays() && !isServiceRunning.value) {
+            startCoachService(isSimulation = true)
+        }
+
+        simulationJob = viewModelScope.launch {
+            var currentSec = 0
+            while (isSimulatingFlow.value) {
+                jumpToMatchTime(currentSec, triggerVoice = (currentSec in listOf(30, 48, 90, 120, 240, 480, 900)))
+                kotlinx.coroutines.delay(1000L)
+                currentSec++
+                if (currentSec > 1200) currentSec = 0
+            }
+        }
+    }
+
+    fun stopMatchSimulation() {
+        simulationJob?.cancel()
+        simulationJob = null
+        isSimulatingFlow.value = false
+    }
+
+    fun jumpToMatchTime(seconds: Int, triggerVoice: Boolean = true) {
+        val currentTactical = CoachStateHub.tacticalState.value
+        val goldDiff = when {
+            seconds < 120 -> 0
+            seconds in 120..400 -> 800
+            seconds in 401..700 -> 2200
+            seconds in 701..900 -> 4500
+            else -> 6000
+        }
+        val allyKills = (seconds / 100).coerceAtLeast(0)
+        val enemyKills = (seconds / 140).coerceAtLeast(0)
+
+        val newGameState = com.example.model.GameState(
+            matchActive = true,
+            screenState = com.example.model.ScreenState.IN_MATCH,
+            matchTimeSeconds = seconds,
+            allyKills = allyKills,
+            enemyKills = enemyKills,
+            goldDifference = goldDiff,
+            overallConfidence = 0.95f
+        )
+        CoachStateHub.updateGameState(newGameState)
+        val eval = tacticalEngine.evaluateGameState(newGameState, currentTactical)
+        CoachStateHub.updateState(eval.newState)
+
+        if (triggerVoice) {
+            eval.voiceCallout?.let { phrase ->
+                voiceCoach.speakCallout(
+                    callout = phrase,
+                    tag = eval.calloutTag,
+                    priority = eval.calloutPriority
+                )
+            }
+        }
     }
 
     fun selectPresetScenario(index: Int) {

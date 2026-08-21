@@ -28,7 +28,7 @@ class ScreenStateDetector {
 
         // Check if Scoreboard or Shop component was detected dynamically
         val hasScoreboardComponent = detectedComponents.any { it.componentName == "Scoreboard" && it.confidence > 0.5f }
-        if (hasScoreboardComponent || ocrText.contains("KDA", ignoreCase = true) || ocrText.contains("Trang bị", ignoreCase = true) && ocrText.contains("Vàng", ignoreCase = true)) {
+        if (hasScoreboardComponent || ocrText.contains("KDA", ignoreCase = true) || (ocrText.contains("Trang bị", ignoreCase = true) && ocrText.contains("Vàng", ignoreCase = true))) {
             return ScreenState.SCOREBOARD_OPEN
         }
 
@@ -37,9 +37,24 @@ class ScreenStateDetector {
             return ScreenState.SHOP_OPEN
         }
 
-        // Timer regex matching (e.g., 00:24, 0:24, 00.24, 15:30, 02:00)
-        val hasTimerPattern = ocrText.contains(Regex("(\\d{1,2})\\s*[:.bB1lI-]\\s*(\\d{2})")) ||
-                ocrText.contains(Regex("\\d{1,2}:\\d{2}"))
+        // Timer regex matching (e.g., 00:48, 00:24, 0:24, 00.24, 00 48, 15:30, 02:00)
+        val hasTimerPattern = ocrText.contains(Regex("""\b([0-5]?[0-9])\s*[:.\s;,|I!]\s*([0-5][0-9])\b""")) ||
+                ocrText.contains(Regex("""\d{1,2}:\d{2}"""))
+
+        val hasScorePattern = ocrText.contains(Regex("""\d{1,2}\s*(?:vs|v|VS|Vs|[-:])\s*\d{1,2}"""))
+
+        val hasInGameSpells = ocrText.contains("Biến về", ignoreCase = true) ||
+                ocrText.contains("Hồi máu", ignoreCase = true) ||
+                ocrText.contains("Tốc biến", ignoreCase = true) ||
+                ocrText.contains("Trừng trị", ignoreCase = true) ||
+                ocrText.contains("Bộc phá", ignoreCase = true) ||
+                ocrText.contains("Tốc hành", ignoreCase = true) ||
+                ocrText.contains("Gầm thét", ignoreCase = true) ||
+                ocrText.contains("Cấp cứu", ignoreCase = true) ||
+                ocrText.contains("Thanh tẩy", ignoreCase = true)
+
+        val hasPingOrFps = ocrText.contains(Regex("""\b\d{1,3}\s*ms\b""", RegexOption.IGNORE_CASE)) ||
+                ocrText.contains(Regex("""\b\d{1,3}\s*fps\b""", RegexOption.IGNORE_CASE))
 
         val hasHeroSelectionText = ocrText.contains("Chọn tướng", ignoreCase = true) ||
                 ocrText.contains("Khóa", ignoreCase = true) ||
@@ -51,22 +66,7 @@ class ScreenStateDetector {
                 ocrText.contains("Phép bổ trợ", ignoreCase = true) ||
                 ocrText.contains("Ngọc bổ trợ", ignoreCase = true)
 
-        val hasInGameKeywords = ocrText.contains("vs", ignoreCase = true) ||
-                ocrText.contains("k", ignoreCase = true) ||
-                ocrText.contains("Vàng", ignoreCase = true) ||
-                ocrText.contains("Caesar", ignoreCase = true) ||
-                ocrText.contains("Rồng", ignoreCase = true) ||
-                ocrText.contains("Trụ", ignoreCase = true) ||
-                ocrText.contains("Chiến", ignoreCase = true) ||
-                ocrText.contains("Biến về", ignoreCase = true) ||
-                ocrText.contains("Hồi máu", ignoreCase = true) ||
-                ocrText.contains("Trừng trị", ignoreCase = true) ||
-                ocrText.contains("Tốc biến", ignoreCase = true) ||
-                ocrText.contains("Bộc phá", ignoreCase = true) ||
-                ocrText.contains("ms", ignoreCase = true) ||
-                ocrText.contains("fps", ignoreCase = true)
-
-        if (hasHeroSelectionText && !hasTimerPattern) {
+        if (hasHeroSelectionText && !hasTimerPattern && !hasInGameSpells) {
             return ScreenState.HERO_SELECTION
         }
 
@@ -78,16 +78,25 @@ class ScreenStateDetector {
                 ocrText.contains("Đấu Đỉnh Cao", ignoreCase = true) ||
                 ocrText.contains("Đấu Hạng", ignoreCase = true)
 
-        if (hasStrictLobbyText && !hasTimerPattern && !hasInGameKeywords) {
+        if (hasStrictLobbyText && !hasTimerPattern && !hasInGameSpells && !hasScorePattern) {
             return ScreenState.GAME_MENU
         }
 
-        // When in landscape and timer or in-game HUD indicators are found -> IN_MATCH
-        if (hasTimerPattern || hasInGameKeywords) {
+        // When in landscape and timer, spells, ping, or score is found -> 100% IN_MATCH
+        if (hasTimerPattern || hasInGameSpells || hasScorePattern || hasPingOrFps) {
             return ScreenState.IN_MATCH
         }
 
-        // Default landscape state if no match keywords found yet: GAME_MENU / DETECTING
+        val hasGeneralInGameKeywords = ocrText.contains("Caesar", ignoreCase = true) ||
+                ocrText.contains("Rồng", ignoreCase = true) ||
+                ocrText.contains("Trụ", ignoreCase = true) ||
+                ocrText.contains("Chiến", ignoreCase = true) ||
+                ocrText.contains("16+", ignoreCase = true)
+
+        if (hasGeneralInGameKeywords) {
+            return ScreenState.IN_MATCH
+        }
+
         return ScreenState.GAME_MENU
     }
 }

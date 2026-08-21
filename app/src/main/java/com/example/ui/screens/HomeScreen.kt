@@ -53,6 +53,7 @@ import com.example.service.LiveCoachService
 import com.example.ui.components.EsportsHeroBanner
 import com.example.ui.components.EsportsScenarioSelector
 import com.example.ui.components.EsportsTacticalRadarCard
+import com.example.ui.components.RealImageOcrTestLabCard
 import com.example.ui.theme.ArcaneCyan
 import com.example.ui.theme.EsportsCardGradient
 import com.example.ui.theme.EsportsDarkBg
@@ -145,6 +146,19 @@ fun HomeScreen(
                 viewModel.stopCoachService()
                 scope.launch {
                     snackbarHostState.showSnackbar("Đã dừng dịch vụ Trợ Lý Liên Quân AI.")
+                }
+            }
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Phòng Thử Nghiệm Quét & Đọc Ảnh Thực Tế
+        RealImageOcrTestLabCard(
+            onGameStateParsed = { gs ->
+                scope.launch {
+                    val mins = (gs.matchTimeSeconds ?: 0) / 60
+                    val secs = (gs.matchTimeSeconds ?: 0) % 60
+                    snackbarHostState.showSnackbar("AI đã nhận diện thành công: Mốc %02d:%02d (%s)".format(mins, secs, gs.screenState.titleVi))
                 }
             }
         )
